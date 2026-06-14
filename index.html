@@ -8,19 +8,25 @@
   <style>
     html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
+	
 
+
+    .leaflet-control-zoom {
+      margin-top: 180px !important;
+      margin-left: 22px !important;
+     }
     .panel {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      z-index: 999;
-      background: white;
-      padding: 14px 18px;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-      font-size: 14px;
-    }
-
+      	position: absolute;
+  	top: 20px;
+  	left: 22px;
+  	z-index: 999;
+  	background: white;
+  	padding: 18px 22px;
+  	border-radius: 16px;
+  	box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+  	font-size: 18px;
+  	min-width: 230px;
+	}
     .online { color: green; font-weight: bold; }
     .offline { color: red; font-weight: bold; }
   </style>
@@ -41,7 +47,13 @@
     const API_TOKEN = "VSTI_MIDDLEWARE_2026_Q7xF92Lp_4MNd8Rk_91AB";
     const API_URL = `https://sos.vsti.cl/map/devices?token=${API_TOKEN}`;
 
-    const map = L.map("map").setView([-33.0189, -71.5475], 15);
+    const map = L.map("map", {
+        zoomControl: false
+        }).setView([-33.0189, -71.5475], 15);
+
+        L.control.zoom({
+  	position: "topleft"
+        }).addTo(map);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap"
