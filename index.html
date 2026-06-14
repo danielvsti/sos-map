@@ -26,11 +26,29 @@
     .offline { color: red; font-weight: bold; }
 
     .leaflet-control-zoom {
-      margin-top: 210px !important;
+      margin-top: 260px !important;
       margin-left: 32px !important;
     }
 
-    .sos-marker {
+    .logo-vsti {
+      width: 260px;
+      display: block;
+      margin: 0 auto 8px auto;
+    }
+
+    .panel-title {
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: #374151;
+      margin-bottom: 10px;
+    }
+
+    .panel-small {
+      font-size: 18px;
+    }
+
+    .sos-marker-normal {
       background: #15803d;
       color: white;
       border-radius: 50%;
@@ -43,6 +61,51 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.35);
       font-weight: bold;
       font-size: 11px;
+    }
+
+    .sos-marker-recent {
+      background: #ea580c;
+      color: white;
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid white;
+      box-shadow: 0 2px 10px rgba(0,0,0,.4);
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    .sos-marker-active {
+      background: #dc2626;
+      color: white;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid white;
+      font-weight: bold;
+      font-size: 12px;
+      animation: sosPulse 1s infinite;
+    }
+
+    @keyframes sosPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+        transform: scale(1);
+      }
+      70% {
+        box-shadow: 0 0 0 28px rgba(220,38,38,0);
+        transform: scale(1.12);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(220,38,38,0);
+        transform: scale(1);
+      }
     }
 
     .siren-marker {
@@ -102,67 +165,58 @@
     .btn-off {
       background: #374151;
     }
-    
-    .logo-vsti {
-      width: 260px;
-      display: block;
-      margin: 0 auto 8px auto;
-     }
 
-    .panel-title {
-  	text-align: center;
-  	font-size: 20px;
-  	font-weight: bold;
-  	color: #374151;
-  	margin-bottom: 10px;
-     }
-
-     .panel-small {
-       font-size: 18px;
-     }
-
+    .btn-ack {
+      background: #15803d;
+    }
   </style>
 </head>
 
 <body>
 
-<div class="panel">
+  <div class="panel">
 
-  <img
-    src="logo-vsti.png"
-    alt="VS&TI"
-    class="logo-vsti"
-  >
+    <img
+      src="logo-vsti.png"
+      alt="VS&TI"
+      class="logo-vsti"
+    >
 
-  <div class="panel-title">
-    Sistema SOS Municipal
+    <div class="panel-title">
+      Sistema SOS Municipal
+    </div>
+
+    <div class="panel-small">
+      Estado:
+      <span id="status" class="offline">cargando...</span>
+    </div>
+
+    <div class="panel-small">
+      Dispositivos:
+      <span id="count">0</span>
+    </div>
+
+    <div class="panel-small">
+      SOS activos:
+      <span id="activeSosCount">0</span>
+    </div>
+
+    <div class="panel-small">
+      SOS recientes:
+      <span id="recentSosCount">0</span>
+    </div>
+
+    <div class="panel-small">
+      Sirenas:
+      <span id="sirenCount">0</span>
+    </div>
+
+    <div class="panel-small">
+      Actualizado:
+      <span id="lastUpdate">-</span>
+    </div>
+
   </div>
-
-  <div class="panel-small">
-    Estado:
-    <span id="status" class="offline">
-      cargando...
-    </span>
-  </div>
-
-  <div class="panel-small">
-    Dispositivos:
-    <span id="count">0</span>
-  </div>
-
-  <div class="panel-small">
-    Sirenas:
-    <span id="sirenCount">0</span>
-  </div>
-
-  <div class="panel-small">
-    Actualizado:
-    <span id="lastUpdate">-</span>
-  </div>
-
-</div>
-
-
 
   <div id="map"></div>
 
@@ -172,6 +226,7 @@
     const MAP_STATE_URL = "https://sos.vsti.cl/public/map-state";
     const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
     const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
+    const ACK_SOS_URL = "https://sos.vsti.cl/public/devices/ack-sos";
 
     const map = L.map("map", { zoomControl: false })
       .setView([-33.0189, -71.5475], 15);
@@ -182,12 +237,22 @@
       attribution: "© OpenStreetMap"
     }).addTo(map);
 
-    const sosIcon = L.divIcon({
-      className: "",
-      html: `<div class="sos-marker">SOS</div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20]
-    });
+    function getSosIcon(device) {
+      let cssClass = "sos-marker-normal";
+
+      if (device.sos_state === "ACTIVE") {
+        cssClass = "sos-marker-active";
+      } else if (device.sos_state === "RECENT") {
+        cssClass = "sos-marker-recent";
+      }
+
+      return L.divIcon({
+        className: "",
+        html: `<div class="${cssClass}">SOS</div>`,
+        iconSize: [60, 60],
+        iconAnchor: [30, 30]
+      });
+    }
 
     const sirenIcon = L.divIcon({
       className: "",
@@ -243,29 +308,71 @@
       }
     }
 
+    async function ackSos(deviceId) {
+      const res = await fetch(ACK_SOS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          device_id: deviceId
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.status === "ok") {
+        await loadMapState();
+      } else {
+        alert("No fue posible reconocer el SOS");
+      }
+    }
+
     function renderDevice(device) {
       const name = device.name || `Botón SOS ${device.id}`;
+      const icon = getSosIcon(device);
+
+      const sosText =
+        device.sos_state === "ACTIVE"
+          ? '<span style="color:#dc2626;font-weight:bold;">🚨 SOS ACTIVO</span>'
+          : device.sos_state === "RECENT"
+            ? '<span style="color:#ea580c;font-weight:bold;">⚠️ SOS RECIENTE</span>'
+            : '<span style="color:#15803d;font-weight:bold;">✅ NORMAL</span>';
 
       const popup = `
         <strong>${name}</strong><br>
         ID: ${device.id}<br>
-        Estado: ${device.online ? "Online" : "Offline"}<br>
+        Estado SOS: ${sosText}<br>
+        Estado dispositivo: ${device.online ? "Online" : "Offline"}<br>
+        Último evento: ${device.last_event_type ?? "-"}<br>
         Latitud: ${device.latitude}<br>
         Longitud: ${device.longitude}<br>
         Velocidad: ${device.speed ?? "-"} km/h<br>
         Dirección: ${device.direction ?? "-"}°<br>
         Satélites: ${device.satellites ?? "-"}<br>
         GPS válido: ${device.valid ? "Sí" : "No"}<br>
-        Última actualización: ${device.last_seen ?? "-"}
+        Última actualización: ${device.last_seen ?? "-"}<br>
+        ${
+          device.sos_state === "ACTIVE" || device.sos_state === "RECENT"
+            ? `<br><button class="btn-siren btn-ack" onclick="ackSos('${device.id}')">
+                 ✅ Marcar como atendido
+               </button>`
+            : ""
+        }
       `;
 
       if (!deviceMarkers[device.id]) {
         deviceMarkers[device.id] = L.marker(
           [device.latitude, device.longitude],
-          { icon: sosIcon }
+          { icon }
         ).addTo(map);
       } else {
-        deviceMarkers[device.id].setLatLng([device.latitude, device.longitude]);
+        deviceMarkers[device.id].setLatLng([
+          device.latitude,
+          device.longitude
+        ]);
+
+        deviceMarkers[device.id].setIcon(icon);
       }
 
       deviceMarkers[device.id].bindPopup(popup);
@@ -297,7 +404,11 @@
           { icon }
         ).addTo(map);
       } else {
-        sirenMarkers[siren.id].setLatLng([siren.latitude, siren.longitude]);
+        sirenMarkers[siren.id].setLatLng([
+          siren.latitude,
+          siren.longitude
+        ]);
+
         sirenMarkers[siren.id].setIcon(icon);
       }
 
@@ -309,16 +420,23 @@
         const res = await fetch(MAP_STATE_URL);
         const data = await res.json();
 
+        const devices = data.devices || [];
+        const sirens = data.sirens || [];
+
+        const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
+        const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
+
         document.getElementById("status").textContent = "conectado";
         document.getElementById("status").className = "online";
-        document.getElementById("count").textContent = data.devices?.length ?? 0;
+        document.getElementById("count").textContent = devices.length;
+        document.getElementById("activeSosCount").textContent = activeSos;
+        document.getElementById("recentSosCount").textContent = recentSos;
+        document.getElementById("sirenCount").textContent = sirens.length;
+        document.getElementById("lastUpdate").textContent =
+          new Date().toLocaleTimeString();
 
-       document.getElementById("sirenCount").textContent = data.sirens?.length ?? 0; 
-
-        document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString();
-
-        (data.devices || []).forEach(renderDevice);
-        (data.sirens || []).forEach(renderSiren);
+        devices.forEach(renderDevice);
+        sirens.forEach(renderSiren);
 
       } catch (err) {
         console.error(err);
