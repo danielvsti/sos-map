@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>VSTI SOS - Mapa</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
+    #map { height: 100vh; width: 100%; }
+
+    .panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 999;
+      background: white;
+      padding: 14px 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+      font-size: 14px;
+    }
+
+    .online { color: green; font-weight: bold; }
+    .offline { color: red; font-weight: bold; }
+  </style>
+</head>
+
+<body>
+  <div class="panel">
+    <strong>VSTI SOS</strong><br>
+    Estado: <span id="status" class="offline">cargando...</span><br>
+    Dispositivos: <span id="count">0</span>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    const API_TOKEN = "VSTI_MIDDLEWARE_2026_Q7xF92Lp_4MNd8Rk_91AB";
+    const API_URL = `https://sos.vsti.cl/map/devices?token=${API_TOKEN}`;
+
+    const map = L.map("map").setView([-33.0189, -71.5475], 15);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap"
+    }).addTo(map);
+
+    const markers = {};
+
+    async function loadDevices() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+
+        document.getElementById("status").textContent = "conectado";
+        document.getElementById("status").className = "online";
+        document.getElementById("count").textContent = data.total;
+
+        data.devices.forEach(device => {
+          const lat = device.latitude;
+          const lon = device.longitude;
+
+          const popup = `
+            <strong>Botón SOS ${device.id}</strong><br>
+            Estado: ${device.online ? "Online" : "Offline"}<br>
+            Latitud: ${lat}<br>
+            Longitud: ${lon}<br>
+            Velocidad: ${device.speed ?? "-"} km/h<br>
+            Dirección: ${device.direction ?? "-"}°<br>
+            Satélites: ${device.satellites ?? "-"}<br>
+            GPS válido: ${device.valid ? "Sí" : "No"}<br>
+            Última actualización: ${device.last_seen}
+          `;
+
+          if (!markers[device.id]) {
+            markers[device.id] = L.marker([lat, lon]).addTo(map);
+          } else {
+            markers[device.id].setLatLng([lat, lon]);
+          }
+
+          markers[device.id].bindPopup(popup);
+        });
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").textContent = "error";
+        document.getElementById("status").className = "offline";
+      }
+    }
+
+    loadDevices();
+    setInterval(loadDevices, 5000);
+  </script>
+</body>
+</html>
