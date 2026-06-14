@@ -8,27 +8,66 @@
   <style>
     html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
-	
 
-
-    .leaflet-control-zoom {
-      margin-top: 180px !important;
-      margin-left: 22px !important;
-     }
     .panel {
-      	position: absolute;
-  	top: 20px;
-  	left: 22px;
-  	z-index: 999;
-  	background: white;
-  	padding: 18px 22px;
-  	border-radius: 16px;
-  	box-shadow: 0 4px 18px rgba(0,0,0,0.25);
-  	font-size: 18px;
-  	min-width: 230px;
-	}
+      position: absolute;
+      top: 28px;
+      left: 32px;
+      z-index: 999;
+      background: white;
+      padding: 18px 22px;
+      border-radius: 18px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+      font-size: 20px;
+      min-width: 270px;
+    }
+
     .online { color: green; font-weight: bold; }
     .offline { color: red; font-weight: bold; }
+
+    .leaflet-control-zoom {
+      margin-top: 210px !important;
+      margin-left: 32px !important;
+    }
+
+    .sos-marker {
+      background: #15803d;
+      color: white;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+      font-weight: bold;
+    }
+
+    .siren-marker {
+      background: #dc2626;
+      color: white;
+      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,.4);
+      font-size: 18px;
+    }
+
+    .btn-siren {
+      margin-top: 10px;
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -36,7 +75,8 @@
   <div class="panel">
     <strong>VSTI SOS</strong><br>
     Estado: <span id="status" class="offline">cargando...</span><br>
-    Dispositivos: <span id="count">0</span>
+    Dispositivos: <span id="count">0</span><br>
+    Última actualización: <span id="lastUpdate">-</span>
   </div>
 
   <div id="map"></div>
@@ -45,37 +85,98 @@
 
   <script>
     const API_TOKEN = "VSTI_MIDDLEWARE_2026_Q7xF92Lp_4MNd8Rk_91AB";
-    const API_URL = `https://sos.vsti.cl/map/devices?token=${API_TOKEN}`;
+    const DEVICES_URL = `https://sos.vsti.cl/map/devices?token=${API_TOKEN}`;
+    const SIREN_COMMAND_URL = `https://sos.vsti.cl/sirens/command?token=${API_TOKEN}`;
+
+    const SIREN = {
+      id: "LAB-001",
+      name: "Sirena Libertad / 5 Norte",
+      lat: -33.01895,
+      lon: -71.55090
+    };
+
+    const deviceNames = {
+      "8322560": "Botón SOS Piloto"
+    };
 
     const map = L.map("map", {
-        zoomControl: false
-        }).setView([-33.0189, -71.5475], 15);
+      zoomControl: false
+    }).setView([-33.0189, -71.5475], 15);
 
-        L.control.zoom({
-  	position: "topleft"
-        }).addTo(map);
+    L.control.zoom({ position: "topleft" }).addTo(map);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap"
     }).addTo(map);
 
+    const sosIcon = L.divIcon({
+      className: "",
+      html: `<div class="sos-marker">SOS</div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+
+    const sirenIcon = L.divIcon({
+      className: "",
+      html: `<div class="siren-marker">🚨</div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
+    });
+
     const markers = {};
+
+    const sirenMarker = L.marker([SIREN.lat, SIREN.lon], { icon: sirenIcon }).addTo(map);
+    sirenMarker.bindPopup(`
+      <strong>${SIREN.name}</strong><br>
+      ID: ${SIREN.id}<br>
+      Ubicación: Libertad con 5 Norte<br>
+      <button class="btn-siren" onclick="activateSiren('${SIREN.id}')">
+        🚨 Activar sirena 60s
+      </button>
+    `);
+
+    async function activateSiren(sirenId) {
+      if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
+
+      const res = await fetch(SIREN_COMMAND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sirens: [sirenId],
+          action: "ON",
+          duration_seconds: 60,
+          source: "mapa-sos",
+          event_id: `MAP-${Date.now()}`
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.status === "ok") {
+        alert("Sirena activada correctamente");
+      } else {
+        alert("Error activando sirena");
+      }
+    }
 
     async function loadDevices() {
       try {
-        const res = await fetch(API_URL);
+        const res = await fetch(DEVICES_URL);
         const data = await res.json();
 
         document.getElementById("status").textContent = "conectado";
         document.getElementById("status").className = "online";
         document.getElementById("count").textContent = data.total;
+        document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString();
 
         data.devices.forEach(device => {
           const lat = device.latitude;
           const lon = device.longitude;
+          const name = deviceNames[device.id] || `Botón SOS ${device.id}`;
 
           const popup = `
-            <strong>Botón SOS ${device.id}</strong><br>
+            <strong>${name}</strong><br>
+            ID: ${device.id}<br>
             Estado: ${device.online ? "Online" : "Offline"}<br>
             Latitud: ${lat}<br>
             Longitud: ${lon}<br>
@@ -83,11 +184,16 @@
             Dirección: ${device.direction ?? "-"}°<br>
             Satélites: ${device.satellites ?? "-"}<br>
             GPS válido: ${device.valid ? "Sí" : "No"}<br>
-            Última actualización: ${device.last_seen}
+            Última actualización: ${device.last_seen}<br>
+            <hr>
+            Sirena asociada: ${SIREN.id}<br>
+            <button class="btn-siren" onclick="activateSiren('${SIREN.id}')">
+              🚨 Activar sirena 60s
+            </button>
           `;
 
           if (!markers[device.id]) {
-            markers[device.id] = L.marker([lat, lon]).addTo(map);
+            markers[device.id] = L.marker([lat, lon], { icon: sosIcon }).addTo(map);
           } else {
             markers[device.id].setLatLng([lat, lon]);
           }
