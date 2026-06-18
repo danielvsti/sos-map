@@ -5,8 +5,6 @@
 <title>VSTI SOS - Mapa</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-let mapInitialized = false;
-let userMovedMap = false;
 
 <style>
 html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
@@ -16,21 +14,21 @@ html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
 position: absolute;
 top: 28px;
 left: 32px;
-      z-index: 999;
+z-index: 999;
 background: white;
 padding: 18px 22px;
-	 border-radius: 18px;
-	 box-shadow: 0 4px 18px rgba(0,0,0,.25);
-	 font-size: 20px;
-	 min-width: 270px;
+ border-radius: 18px;
+ box-shadow: 0 4px 18px rgba(0,0,0,.25);
+ font-size: 20px;
+ min-width: 270px;
 }
 
 .online { color: green; font-weight: bold; }
 .offline { color: red; font-weight: bold; }
 
 .leaflet-control-zoom {
-	margin-top: 430px !important;
-	margin-left: 32px !important;
+margin-top: 430px !important;
+margin-left: 32px !important;
 }
 
 .logo-vsti {
@@ -40,129 +38,129 @@ margin: 0 auto 8px auto;
 }
 
 .panel-title {
-	text-align: center;
-	font-size: 20px;
-	font-weight: bold;
+text-align: center;
+font-size: 20px;
+font-weight: bold;
 color: #374151;
-       margin-bottom: 10px;
+margin-bottom: 10px;
 }
 
 .panel-small {
-	font-size: 18px;
+font-size: 18px;
 }
 
 .sos-marker-normal {
 background: #15803d;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 34px;
 height: 34px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	box-shadow: 0 2px 8px rgba(0,0,0,.35);
-	font-weight: bold;
-	font-size: 11px;
+box-shadow: 0 2px 8px rgba(0,0,0,.35);
+font-weight: bold;
+font-size: 11px;
 }
 
 .sos-marker-recent {
 background: #ea580c;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 38px;
 height: 38px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	box-shadow: 0 2px 10px rgba(0,0,0,.4);
-	font-weight: bold;
-	font-size: 11px;
+box-shadow: 0 2px 10px rgba(0,0,0,.4);
+font-weight: bold;
+font-size: 11px;
 }
 
 .sos-marker-active {
 background: #dc2626;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	font-weight: bold;
-	font-size: 12px;
+font-weight: bold;
+font-size: 12px;
 animation: sosPulse 1s infinite;
 }
 
 @keyframes sosPulse {
-	0% {
-		box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+0% {
+	box-shadow: 0 0 0 0 rgba(220,38,38,.8);
 transform: scale(1);
-	}
-	70% {
-		box-shadow: 0 0 0 28px rgba(220,38,38,0);
+}
+70% {
+	box-shadow: 0 0 0 28px rgba(220,38,38,0);
 transform: scale(1.12);
-	}
-	100% {
-		box-shadow: 0 0 0 0 rgba(220,38,38,0);
+}
+100% {
+	box-shadow: 0 0 0 0 rgba(220,38,38,0);
 transform: scale(1);
-	}
+}
 }
 
 .siren-marker {
 background: #991b1b;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 38px;
 height: 38px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	box-shadow: 0 2px 8px rgba(0,0,0,.4);
-	font-size: 20px;
+box-shadow: 0 2px 8px rgba(0,0,0,.4);
+font-size: 20px;
 }
 
 .siren-marker-active {
 background: #dc2626;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	font-size: 22px;
+font-size: 22px;
 animation: sirenPulse 1s infinite;
 }
 
 @keyframes sirenPulse {
-	0% {
-		box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+0% {
+	box-shadow: 0 0 0 0 rgba(220,38,38,.8);
 transform: scale(1);
-	}
-	70% {
-		box-shadow: 0 0 0 28px rgba(220,38,38,0);
+}
+70% {
+	box-shadow: 0 0 0 28px rgba(220,38,38,0);
 transform: scale(1.12);
-	}
-	100% {
-		box-shadow: 0 0 0 0 rgba(220,38,38,0);
+}
+100% {
+	box-shadow: 0 0 0 0 rgba(220,38,38,0);
 transform: scale(1);
-	}
+}
 }
 
 .btn-siren {
-	margin-top: 10px;
+margin-top: 10px;
 background: #dc2626;
 color: white;
 border: none;
 padding: 8px 12px;
-	 border-radius: 8px;
+ border-radius: 8px;
 cursor: pointer;
-	font-weight: bold;
+font-weight: bold;
 }
 
 .btn-off {
@@ -174,43 +172,43 @@ background: #15803d;
 }
 
 .mobile-sos-active {
-  background: #2563eb;
-  color: white;
-  border-radius: 50%;
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid white;
-  font-size: 22px;
-  animation: sosPulse 1s infinite;
+background: #2563eb;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 3px solid white;
+font-size: 22px;
+animation: sosPulse 1s infinite;
 }
 
 .mobile-sos-ack {
-  background: #ca8a04;
-  color: white;
-  border-radius: 50%;
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid white;
-  font-size: 22px;
+background: #ca8a04;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 3px solid white;
+font-size: 22px;
 }
 
 .mobile-sos-cancelled {
-  background: #6b7280;
-  color: white;
-  border-radius: 50%;
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid white;
-  font-size: 22px;
+background: #6b7280;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 3px solid white;
+font-size: 22px;
 }
 
 
@@ -297,9 +295,18 @@ DEFAULT_CENTER,
 DEFAULT_ZOOM
 );
 
-map.on("dragstart zoomstart", () => {
+let mapInitialized = false;
+let userMovedMap = false;
+
+
+map.on("dragstart", () => {
   userMovedMap = true;
 });
+
+map.on("zoomstart", () => {
+  userMovedMap = true;
+});
+
 
 L.control.zoom({ position: "topleft" }).addTo(map);
 
