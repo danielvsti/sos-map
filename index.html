@@ -588,11 +588,16 @@ try {
 	const devices = data.devices || [];
 	const sirens = data.sirens || [];
 	const mobileEvents = data.mobile_events || [];
+
+const visibleMobileEvents = mobileEvents.filter(
+  e => e.state === "ACTIVE"
+);
+
 	const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
 	const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
-	const mobileSos = mobileEvents.filter(
-			e => e.state === "ACTIVE"
-			).length;
+	
+	const mobileSos = visibleMobileEvents.length;
+
 	document.getElementById("status").textContent = "conectado";
 	document.getElementById("status").className = "online";
 	document.getElementById("count").textContent = devices.length;
@@ -607,17 +612,18 @@ try {
 		new Date().toLocaleTimeString();
 	document.getElementById("totalNodes").textContent =
 devices.length +
-mobileEvents.length +
+visibleMobileEvents.length +
 sirens.length;
 
 	devices.forEach(renderDevice);
 	sirens.forEach(renderSiren);
 
 const activeMobileKeys = new Set(
-mobileEvents.map(
-e => e.user_id || e.phone || e.id
-)
+  visibleMobileEvents.map(
+    e => e.user_id || e.phone || e.id
+  )
 );
+
 
 Object.keys(mobileMarkers).forEach(key => {
 
@@ -630,8 +636,7 @@ delete mobileMarkers[key];
 });
 
 
-	mobileEvents.forEach(renderMobileEvent);
-
+visibleMobileEvents.forEach(renderMobileEvent);
 } catch (err) {
 	console.error(err);
 	document.getElementById("status").textContent = "error";
