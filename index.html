@@ -5,6 +5,9 @@
 <title>VSTI SOS - Mapa</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
+let mapInitialized = false;
+let userMovedMap = false;
+
 <style>
 html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
 #map { height: 100vh; width: 100%; }
@@ -286,8 +289,17 @@ const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
 const ACK_SOS_URL = "https://sos.vsti.cl/public/devices/ack-sos";
 const ACK_MOBILE_SOS_URL = "https://sos.vsti.cl/public/mobile/ack";
 
-const map = L.map("map", { zoomControl: false })
-.setView([-33.0189, -71.5475], 15);
+const DEFAULT_CENTER = [-33.01895, -71.55090];
+const DEFAULT_ZOOM = 15;
+
+const map = L.map("map").setView(
+DEFAULT_CENTER,
+DEFAULT_ZOOM
+);
+
+map.on("dragstart zoomstart", () => {
+  userMovedMap = true;
+});
 
 L.control.zoom({ position: "topleft" }).addTo(map);
 
@@ -299,9 +311,9 @@ function getSosIcon(device) {
 let cssClass = "sos-marker-normal";
 
 if (device.sos_state === "ACTIVE") {
-	cssClass = "sos-marker-active";
+cssClass = "sos-marker-active";
 } else if (device.sos_state === "RECENT") {
-	cssClass = "sos-marker-recent";
+cssClass = "sos-marker-recent";
 }
 
 return L.divIcon({
@@ -617,6 +629,38 @@ sirens.length;
 
 	devices.forEach(renderDevice);
 	sirens.forEach(renderSiren);
+	visibleMobileEvents.forEach(renderMobileEvent);
+
+if (!userMovedMap) {
+  const bounds = [];
+
+  visibleMobileEvents.forEach(m => {
+    bounds.push([m.latitude, m.longitude]);
+  });
+
+  devices.forEach(d => {
+    bounds.push([d.latitude, d.longitude]);
+  });
+
+  sirens.forEach(s => {
+    bounds.push([s.latitude, s.longitude]);
+  });
+
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, {
+      padding: [50, 50],
+      maxZoom: 17
+    });
+
+    mapInitialized = true;
+  } else if (!mapInitialized) {
+    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    mapInitialized = true;
+  }
+}
+
+
+
 
 const activeMobileKeys = new Set(
   visibleMobileEvents.map(
