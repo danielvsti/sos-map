@@ -150,19 +150,6 @@ transform: scale(1.12);
 transform: scale(1);
 	}
 }
-.mobile-sos-marker {
-background: #2563eb;
-color: white;
-       border-radius: 50%;
-width: 42px;
-height: 42px;
-display: flex;
-	 align-items: center;
-	 justify-content: center;
-border: 3px solid white;
-	font-size: 22px;
-animation: sosPulse 1s infinite;
-}
 
 .btn-siren {
 	margin-top: 10px;
@@ -182,6 +169,53 @@ background: #374151;
 .btn-ack {
 background: #15803d;
 }
+
+.mobile-sos-active {
+  background: #2563eb;
+  color: white;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid white;
+  font-size: 22px;
+  animation: sosPulse 1s infinite;
+}
+
+.mobile-sos-ack {
+  background: #ca8a04;
+  color: white;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid white;
+  font-size: 22px;
+}
+
+.mobile-sos-cancelled {
+  background: #6b7280;
+  color: white;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid white;
+  font-size: 22px;
+}
+
+
+
+
+
+
+
 </style>
 </head>
 
@@ -234,6 +268,11 @@ Actualizado:
 <span id="lastUpdate">-</span>
 </div>
 
+<div class="panel-small">
+Total nodos:
+<span id="totalNodes">0</span>
+</div>
+
 </div>
 
 <div id="map"></div>
@@ -257,15 +296,15 @@ attribution: "© OpenStreetMap"
 }).addTo(map);
 
 function getSosIcon(device) {
-	let cssClass = "sos-marker-normal";
+let cssClass = "sos-marker-normal";
 
-	if (device.sos_state === "ACTIVE") {
-		cssClass = "sos-marker-active";
-	} else if (device.sos_state === "RECENT") {
-		cssClass = "sos-marker-recent";
-	}
+if (device.sos_state === "ACTIVE") {
+	cssClass = "sos-marker-active";
+} else if (device.sos_state === "RECENT") {
+	cssClass = "sos-marker-recent";
+}
 
-	return L.divIcon({
+return L.divIcon({
 className: "",
 html: `<div class="${cssClass}">SOS</div>`,
 iconSize: [60, 60],
@@ -299,9 +338,9 @@ const sirenMarkers = {};
 const mobileMarkers = {};
 
 async function activateSiren(sirenId) {
-	if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
+if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
 
-	const res = await fetch(SIREN_ACTIVATE_URL, {
+const res = await fetch(SIREN_ACTIVATE_URL, {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
@@ -313,7 +352,7 @@ duration_seconds: 60
 const data = await res.json();
 
 if (data.status === "ok") {
-	await loadMapState();
+await loadMapState();
 } else {
 	alert("Error activando sirena");
 }
@@ -376,7 +415,31 @@ if (data.status === "ok") {
 }
 }
 
+function getMobileIcon(event) {
 
+  let cssClass = "mobile-sos-active";
+
+  if (
+    event.state === "ACKNOWLEDGED" ||
+    event.state === "ACK"
+  ) {
+    cssClass = "mobile-sos-ack";
+  }
+
+  if (
+    event.state === "CANCELLED" ||
+    event.state === "CLOSED"
+  ) {
+    cssClass = "mobile-sos-cancelled";
+  }
+
+  return L.divIcon({
+    className: "",
+    html: `<div class="${cssClass}">📱</div>`,
+    iconSize: [70, 70],
+    iconAnchor: [35, 35]
+  });
+}
 
 function renderDevice(device) {
 	const name = device.name || `Botón SOS ${device.id}`;
@@ -465,50 +528,55 @@ Ubicación: ${siren.location ?? "-"}<br>
 	   sirenMarkers[siren.id].bindPopup(popup);
 }
 
+
 function renderMobileEvent(event) {
 
-	const popup = `
-		<strong>📱 ${event.name || "Usuario móvil"}</strong><br>
-		ID: ${event.id}<br>
-		Estado: <strong style="color:#2563eb;">${event.state}</strong><br>
-		Precisión: ${event.accuracy ?? "-"} m<br>
-		Batería: ${event.battery ?? "-"} %<br>
-		Teléfono: ${event.phone ?? "-"}<br>
-		Latitud: ${event.latitude}<br>
-		Longitud: ${event.longitude}<br>
-		Creado: ${event.created_at ?? "-"}<br>
+  const markerKey = event.user_id || event.phone || event.id;
 
-		${
-			event.state === "ACTIVE"
-				? `<br>
-				<button
-				class="btn-siren btn-ack"
-				onclick="ackMobileSos('${event.id}')">
-				✅ Marcar como atendido
-				</button>`
-				: ""
-		}
-	`;
+  const popup = `
+    <strong>📱 ${event.name || "Usuario móvil"}</strong><br>
+    ID: ${event.id}<br>
+    Estado: <strong style="color:#2563eb;">${event.state}</strong><br>
+    Precisión: ${event.accuracy ?? "-"} m<br>
+    Batería: ${event.battery ?? "-"} %<br>
+    Teléfono: ${event.phone ?? "-"}<br>
+    Latitud: ${event.latitude}<br>
+    Longitud: ${event.longitude}<br>
+    Creado: ${event.created_at ?? "-"}<br>
 
-	if (!mobileMarkers[event.id]) {
+    ${
+      event.state === "ACTIVE"
+        ? `<br>
+          <button
+            class="btn-siren btn-ack"
+            onclick="ackMobileSos('${event.id}')">
+            ✅ Marcar como atendido
+          </button>`
+        : ""
+    }
+  `;
 
-		mobileMarkers[event.id] = L.marker(
-				[event.latitude, event.longitude],
-				{ icon: mobileSosIcon }
-				).addTo(map);
+  const icon = getMobileIcon(event);
 
-	} else {
+  if (!mobileMarkers[markerKey]) {
 
-		mobileMarkers[event.id].setLatLng([
-				event.latitude,
-				event.longitude
-		]);
-	}
+    mobileMarkers[markerKey] = L.marker(
+      [event.latitude, event.longitude],
+      { icon }
+    ).addTo(map);
 
-	mobileMarkers[event.id].bindPopup(popup);
+  } else {
+
+    mobileMarkers[markerKey].setLatLng([
+      event.latitude,
+      event.longitude
+    ]);
+
+    mobileMarkers[markerKey].setIcon(icon);
+  }
+
+  mobileMarkers[markerKey].bindPopup(popup);
 }
-
-
 
 
 
@@ -537,9 +605,35 @@ async function loadMapState() {
 		document.getElementById("sirenCount").textContent = sirens.length;
 		document.getElementById("lastUpdate").textContent =
 			new Date().toLocaleTimeString();
+                document.getElementById("totalNodes").textContent =
+  devices.length +
+  mobileEvents.length +
+  sirens.length;
 
 		devices.forEach(renderDevice);
 		sirens.forEach(renderSiren);
+
+const activeMobileKeys = new Set(
+  mobileEvents.map(
+    e => e.user_id || e.phone || e.id
+  )
+);
+
+Object.keys(mobileMarkers).forEach(key => {
+
+  if (!activeMobileKeys.has(key)) {
+
+    map.removeLayer(mobileMarkers[key]);
+
+    delete mobileMarkers[key];
+  }
+});
+
+
+
+
+
+
 		mobileEvents.forEach(renderMobileEvent);
 
 	} catch (err) {

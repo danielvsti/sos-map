@@ -17,7 +17,7 @@
       background: white;
       padding: 18px 22px;
       border-radius: 18px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+      box-shadow: 0 4px 18px rgba(0,0,0,.25);
       font-size: 20px;
       min-width: 270px;
     }
@@ -34,28 +34,58 @@
       background: #15803d;
       color: white;
       border-radius: 50%;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 3px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,.35);
-      font-weight: bold;
-    }
-
-    .siren-marker {
-      background: #dc2626;
-      color: white;
-      border-radius: 50%;
       width: 34px;
       height: 34px;
       display: flex;
       align-items: center;
       justify-content: center;
       border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    .siren-marker {
+      background: #991b1b;
+      color: white;
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid white;
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
-      font-size: 18px;
+      font-size: 20px;
+    }
+
+    .siren-marker-active {
+      background: #dc2626;
+      color: white;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid white;
+      font-size: 22px;
+      animation: sirenPulse 1s infinite;
+    }
+
+    @keyframes sirenPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+        transform: scale(1);
+      }
+      70% {
+        box-shadow: 0 0 0 28px rgba(220,38,38,0);
+        transform: scale(1.12);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(220,38,38,0);
+        transform: scale(1);
+      }
     }
 
     .btn-siren {
@@ -68,40 +98,83 @@
       cursor: pointer;
       font-weight: bold;
     }
+
+    .btn-off {
+      background: #374151;
+    }
+    
+    .logo-vsti {
+      width: 260px;
+      display: block;
+      margin: 0 auto 8px auto;
+     }
+
+    .panel-title {
+  	text-align: center;
+  	font-size: 20px;
+  	font-weight: bold;
+  	color: #374151;
+  	margin-bottom: 10px;
+     }
+
+     .panel-small {
+       font-size: 18px;
+     }
+
   </style>
 </head>
 
 <body>
-  <div class="panel">
-    <strong>VSTI SOS</strong><br>
-    Estado: <span id="status" class="offline">cargando...</span><br>
-    Dispositivos: <span id="count">0</span><br>
-    Última actualización: <span id="lastUpdate">-</span>
+
+<div class="panel">
+
+  <img
+    src="logo-vsti.png"
+    alt="VS&TI"
+    class="logo-vsti"
+  >
+
+  <div class="panel-title">
+    Sistema SOS Municipal
   </div>
+
+  <div class="panel-small">
+    Estado:
+    <span id="status" class="offline">
+      cargando...
+    </span>
+  </div>
+
+  <div class="panel-small">
+    Dispositivos:
+    <span id="count">0</span>
+  </div>
+
+  <div class="panel-small">
+    Sirenas:
+    <span id="sirenCount">0</span>
+  </div>
+
+  <div class="panel-small">
+    Actualizado:
+    <span id="lastUpdate">-</span>
+  </div>
+
+</div>
+
+
 
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <script>
-    const API_TOKEN = "VSTI_MIDDLEWARE_2026_Q7xF92Lp_4MNd8Rk_91AB";
-    const DEVICES_URL = `https://sos.vsti.cl/map/devices?token=${API_TOKEN}`;
-    const SIREN_COMMAND_URL = `https://sos.vsti.cl/sirens/command?token=${API_TOKEN}`;
+    const MAP_STATE_URL = "https://sos.vsti.cl/public/map-state";
+    const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
+    const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
 
-    const SIREN = {
-      id: "LAB-001",
-      name: "Sirena Libertad / 5 Norte",
-      lat: -33.01895,
-      lon: -71.55090
-    };
-
-    const deviceNames = {
-      "8322560": "Botón SOS Piloto"
-    };
-
-    const map = L.map("map", {
-      zoomControl: false
-    }).setView([-33.0189, -71.5475], 15);
+    const map = L.map("map", { zoomControl: false })
+      .setView([-33.0189, -71.5475], 15);
 
     L.control.zoom({ position: "topleft" }).addTo(map);
 
@@ -112,94 +185,140 @@
     const sosIcon = L.divIcon({
       className: "",
       html: `<div class="sos-marker">SOS</div>`,
-      iconSize: [34, 34],
-      iconAnchor: [17, 17]
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
     });
 
     const sirenIcon = L.divIcon({
       className: "",
       html: `<div class="siren-marker">🚨</div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20]
+      iconSize: [44, 44],
+      iconAnchor: [22, 22]
     });
 
-    const markers = {};
+    const sirenActiveIcon = L.divIcon({
+      className: "",
+      html: `<div class="siren-marker-active">🚨</div>`,
+      iconSize: [70, 70],
+      iconAnchor: [35, 35]
+    });
 
-    const sirenMarker = L.marker([SIREN.lat, SIREN.lon], { icon: sirenIcon }).addTo(map);
-    sirenMarker.bindPopup(`
-      <strong>${SIREN.name}</strong><br>
-      ID: ${SIREN.id}<br>
-      Ubicación: Libertad con 5 Norte<br>
-      <button class="btn-siren" onclick="activateSiren('${SIREN.id}')">
-        🚨 Activar sirena 60s
-      </button>
-    `);
+    const deviceMarkers = {};
+    const sirenMarkers = {};
 
     async function activateSiren(sirenId) {
       if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
 
-      const res = await fetch(SIREN_COMMAND_URL, {
+      const res = await fetch(SIREN_ACTIVATE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sirens: [sirenId],
-          action: "ON",
-          duration_seconds: 60,
-          source: "mapa-sos",
-          event_id: `MAP-${Date.now()}`
+          siren_id: sirenId,
+          duration_seconds: 60
         })
       });
 
       const data = await res.json();
 
       if (data.status === "ok") {
-        alert("Sirena activada correctamente");
+        await loadMapState();
       } else {
         alert("Error activando sirena");
       }
     }
 
-    async function loadDevices() {
+    async function deactivateSiren(sirenId) {
+      const res = await fetch(SIREN_DEACTIVATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siren_id: sirenId })
+      });
+
+      const data = await res.json();
+
+      if (data.status === "ok") {
+        await loadMapState();
+      } else {
+        alert("Error apagando sirena");
+      }
+    }
+
+    function renderDevice(device) {
+      const name = device.name || `Botón SOS ${device.id}`;
+
+      const popup = `
+        <strong>${name}</strong><br>
+        ID: ${device.id}<br>
+        Estado: ${device.online ? "Online" : "Offline"}<br>
+        Latitud: ${device.latitude}<br>
+        Longitud: ${device.longitude}<br>
+        Velocidad: ${device.speed ?? "-"} km/h<br>
+        Dirección: ${device.direction ?? "-"}°<br>
+        Satélites: ${device.satellites ?? "-"}<br>
+        GPS válido: ${device.valid ? "Sí" : "No"}<br>
+        Última actualización: ${device.last_seen ?? "-"}
+      `;
+
+      if (!deviceMarkers[device.id]) {
+        deviceMarkers[device.id] = L.marker(
+          [device.latitude, device.longitude],
+          { icon: sosIcon }
+        ).addTo(map);
+      } else {
+        deviceMarkers[device.id].setLatLng([device.latitude, device.longitude]);
+      }
+
+      deviceMarkers[device.id].bindPopup(popup);
+    }
+
+    function renderSiren(siren) {
+      const active = siren.active === true || siren.state === "ON";
+      const icon = active ? sirenActiveIcon : sirenIcon;
+
+      const popup = `
+        <strong>${siren.name}</strong><br>
+        ID: ${siren.id}<br>
+        Estado: ${
+          active
+            ? '<strong style="color:red;">ACTIVADA</strong>'
+            : '<strong>Apagada</strong>'
+        }<br>
+        Ubicación: ${siren.location ?? "-"}<br>
+        ${
+          active
+            ? `<button class="btn-siren btn-off" onclick="deactivateSiren('${siren.id}')">Apagar sirena</button>`
+            : `<button class="btn-siren" onclick="activateSiren('${siren.id}')">🚨 Activar sirena 60s</button>`
+        }
+      `;
+
+      if (!sirenMarkers[siren.id]) {
+        sirenMarkers[siren.id] = L.marker(
+          [siren.latitude, siren.longitude],
+          { icon }
+        ).addTo(map);
+      } else {
+        sirenMarkers[siren.id].setLatLng([siren.latitude, siren.longitude]);
+        sirenMarkers[siren.id].setIcon(icon);
+      }
+
+      sirenMarkers[siren.id].bindPopup(popup);
+    }
+
+    async function loadMapState() {
       try {
-        const res = await fetch(DEVICES_URL);
+        const res = await fetch(MAP_STATE_URL);
         const data = await res.json();
 
         document.getElementById("status").textContent = "conectado";
         document.getElementById("status").className = "online";
-        document.getElementById("count").textContent = data.total;
+        document.getElementById("count").textContent = data.devices?.length ?? 0;
+
+       document.getElementById("sirenCount").textContent = data.sirens?.length ?? 0; 
+
         document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString();
 
-        data.devices.forEach(device => {
-          const lat = device.latitude;
-          const lon = device.longitude;
-          const name = deviceNames[device.id] || `Botón SOS ${device.id}`;
-
-          const popup = `
-            <strong>${name}</strong><br>
-            ID: ${device.id}<br>
-            Estado: ${device.online ? "Online" : "Offline"}<br>
-            Latitud: ${lat}<br>
-            Longitud: ${lon}<br>
-            Velocidad: ${device.speed ?? "-"} km/h<br>
-            Dirección: ${device.direction ?? "-"}°<br>
-            Satélites: ${device.satellites ?? "-"}<br>
-            GPS válido: ${device.valid ? "Sí" : "No"}<br>
-            Última actualización: ${device.last_seen}<br>
-            <hr>
-            Sirena asociada: ${SIREN.id}<br>
-            <button class="btn-siren" onclick="activateSiren('${SIREN.id}')">
-              🚨 Activar sirena 60s
-            </button>
-          `;
-
-          if (!markers[device.id]) {
-            markers[device.id] = L.marker([lat, lon], { icon: sosIcon }).addTo(map);
-          } else {
-            markers[device.id].setLatLng([lat, lon]);
-          }
-
-          markers[device.id].bindPopup(popup);
-        });
+        (data.devices || []).forEach(renderDevice);
+        (data.sirens || []).forEach(renderSiren);
 
       } catch (err) {
         console.error(err);
@@ -208,8 +327,8 @@
       }
     }
 
-    loadDevices();
-    setInterval(loadDevices, 5000);
+    loadMapState();
+    setInterval(loadMapState, 3000);
   </script>
 </body>
 </html>
