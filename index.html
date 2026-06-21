@@ -871,14 +871,21 @@ async function openTicketPanel(ticketId) {
         `)
         .join("");
 
+const elapsedMs = Date.now() - new Date(ticket.created_at).getTime();
+const elapsedMin = Math.floor(elapsedMs / 60000);
+const elapsedSec = Math.floor((elapsedMs % 60000) / 1000);
+
+const elapsedText = `${elapsedMin}m ${elapsedSec}s`;
+
     document.getElementById(
       "ticketContent"
     ).innerHTML = `
       <div class="ticket-content-section">
-        <strong>Estado:</strong> ${ticket.state}<br>
-        <strong>Tipo:</strong> ${ticket.alert_type}<br>
-        <strong>Prioridad:</strong> ${ticket.priority}
-      </div>
+<strong>Estado:</strong> ${ticket.state}<br>
+<strong>Tipo:</strong> ${ticket.alert_type}<br>
+<strong>Prioridad:</strong> ${ticket.priority}<br>
+<strong>Tiempo transcurrido:</strong> ⏱️ ${elapsedText}
+</div>
 
       <div class="ticket-content-section">
         <strong>Vecino:</strong><br>
