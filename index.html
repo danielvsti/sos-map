@@ -17,10 +17,10 @@ left: 32px;
 z-index: 999;
 background: white;
 padding: 18px 22px;
- border-radius: 18px;
- box-shadow: 0 4px 18px rgba(0,0,0,.25);
- font-size: 20px;
- min-width: 270px;
+border-radius: 18px;
+box-shadow: 0 4px 18px rgba(0,0,0,.25);
+font-size: 20px;
+min-width: 270px;
 }
 
 .online { color: green; font-weight: bold; }
@@ -95,7 +95,7 @@ border-radius: 50%;
 width: 34px;
 height: 34px;
 display: flex;
- align-items: center;
+align-items: center;
 justify-content: center;
 border: 3px solid white;
 box-shadow: 0 2px 8px rgba(0,0,0,.35);
@@ -252,71 +252,71 @@ font-size: 22px;
 
 
 .ticket-panel {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 420px;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
+position: absolute;
+top: 20px;
+right: 20px;
+width: 420px;
+max-height: calc(100vh - 40px);
+overflow-y: auto;
 
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+background: white;
+border-radius: 16px;
+box-shadow: 0 8px 24px rgba(0,0,0,.25);
 
-  z-index: 1000;
+z-index: 2000;
 }
 
 
 
 
 .hidden {
-  display: none;
+display: none;
 }
 
 .ticket-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+display: flex;
+justify-content: space-between;
+align-items: center;
 
-  padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
+padding: 16px;
+border-bottom: 1px solid #e5e7eb;
 
-  font-size: 20px;
-  font-weight: bold;
+font-size: 20px;
+font-weight: bold;
 }
 
 .ticket-header button {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 20px;
+border: none;
+background: none;
+cursor: pointer;
+font-size: 20px;
 }
 
 .ticket-content-section {
-  padding: 16px;
-  border-bottom: 1px solid #f3f4f6;
+padding: 16px;
+border-bottom: 1px solid #f3f4f6;
 }
 
 
 .ticket-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+display: flex;
+flex-wrap: wrap;
+gap: 8px;
+margin-top: 12px;
 }
 
 .ticket-actions button {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  background: #2563eb;
-  color: white;
-  cursor: pointer;
-  font-size: 14px;
+border: none;
+border-radius: 8px;
+padding: 10px 14px;
+background: #2563eb;
+color: white;
+cursor: pointer;
+font-size: 14px;
 }
 
 .ticket-actions button:hover {
-  background: #1d4ed8;
+background: #1d4ed8;
 }
 
 
@@ -407,12 +407,12 @@ Total nodos:
 <div class="ticket-header">
 <span id="ticketTitle">Ticket</span>
 
-<button onclick="closeTicketPanel()">✖</button>
-  </div>
+<button onclick="closeTicketPanel(event)">✖</button>
+</div>
 
-  <div id="ticketContent">
-    Selecciona una emergencia.
-  </div>
+<div id="ticketContent">
+Selecciona una emergencia.
+</div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -433,6 +433,12 @@ const map = L.map("map").setView(
 DEFAULT_CENTER,
 DEFAULT_ZOOM
 );
+const ticketPanel = document.getElementById("ticketPanel");
+
+L.DomEvent.disableClickPropagation(ticketPanel);
+L.DomEvent.disableScrollPropagation(ticketPanel);
+
+
 
 let mapInitialized = false;
 let userMovedMap = false;
@@ -784,11 +790,18 @@ if (!resolverMarkers[resolver.id]) {
 resolverMarkers[resolver.id].bindPopup(popup);
 }
 
-function closeTicketPanel() {
+function closeTicketPanel(event) {
+
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
   document
     .getElementById("ticketPanel")
     .classList.add("hidden");
 }
+
 
 function callCitizen() {
   alert("Próximamente: llamada al vecino");
