@@ -501,6 +501,8 @@ const deviceMarkers = {};
 const sirenMarkers = {};
 const mobileMarkers = {};
 const resolverMarkers = {};
+let selectedTicket = null;
+let currentSirens = [];
 
 async function activateSiren(sirenId) {
 	if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
@@ -729,361 +731,429 @@ function renderTicket(ticket) {
 
     mobileMarkers[ticket.id].on(
       "click",
-      () => openTicketPanel(ticket.id)
-    );
+() => openTicketPanel(ticket.id)
+);
 
-  } else {
+} else {
 
-    mobileMarkers[ticket.id].setLatLng([
-      ticket.latitude,
-      ticket.longitude
-    ]);
+mobileMarkers[ticket.id].setLatLng([
+ticket.latitude,
+ticket.longitude
+]);
 
-    mobileMarkers[ticket.id].setIcon(icon);
-  }
+mobileMarkers[ticket.id].setIcon(icon);
+}
 }
 
 function renderResolver(resolver) {
 
-	const popup = `
-		<strong>👮 ${resolver.full_name}</strong><br>
-		Estado: ${resolver.status}<br>
-		Teléfono: ${resolver.phone ?? "-"}<br>
-		Última actualización: ${resolver.updated_at}
-	`;
+const popup = `
+	<strong>👮 ${resolver.full_name}</strong><br>
+	Estado: ${resolver.status}<br>
+	Teléfono: ${resolver.phone ?? "-"}<br>
+	Última actualización: ${resolver.updated_at}
+`;
 
-	const icon = getResolverIcon(resolver);
+const icon = getResolverIcon(resolver);
 
-	if (!resolverMarkers[resolver.id]) {
+if (!resolverMarkers[resolver.id]) {
 
-		resolverMarkers[resolver.id] = L.marker(
-				[resolver.latitude, resolver.longitude],
-				{ icon }
-				).addTo(map);
+	resolverMarkers[resolver.id] = L.marker(
+			[resolver.latitude, resolver.longitude],
+			{ icon }
+			).addTo(map);
 
-	} else {
+} else {
 
-		resolverMarkers[resolver.id].setLatLng([
-				resolver.latitude,
-				resolver.longitude
-		]);
+	resolverMarkers[resolver.id].setLatLng([
+			resolver.latitude,
+			resolver.longitude
+	]);
 
-		resolverMarkers[resolver.id].setIcon(icon);
-	}
+	resolverMarkers[resolver.id].setIcon(icon);
+}
 
-	resolverMarkers[resolver.id].bindPopup(popup);
+resolverMarkers[resolver.id].bindPopup(popup);
 }
 
 function closeTicketPanel(event) {
 
-	if (event) {
-		event.stopPropagation();
-		event.preventDefault();
-	}
+if (event) {
+	event.stopPropagation();
+	event.preventDefault();
+}
 
-	document
-		.getElementById("ticketPanel")
-		.classList.add("hidden");
+document
+	.getElementById("ticketPanel")
+	.classList.add("hidden");
 }
 
 
 function callCitizen() {
-	alert("Próximamente: llamada al vecino");
+alert("Próximamente: llamada al vecino");
 }
 
 function callEmergencyContact() {
-	alert("Próximamente: llamada al contacto de emergencia");
+alert("Próximamente: llamada al contacto de emergencia");
 }
 
-function activateNearestSiren() {
-	alert("Próximamente: activación de sirena");
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (v) => v * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+
+async function activateNearestSiren() {
+
+  if (!selectedTicket) {
+    alert("No hay ticket seleccionado");
+    return;
+  }
+
+  if (!currentSirens.length) {
+    alert("No hay sirenas disponibles");
+    return;
+  }
+
+  const nearest = currentSirens
+    .map(siren => ({
+      ...siren,
+      distance: distanceMeters(
+        Number(selectedTicket.latitude),
+        Number(selectedTicket.longitude),
+        Number(siren.latitude),
+        Number(siren.longitude)
+      )
+    }))
+    .sort((a, b) => a.distance - b.distance)[0];
+
+  const ok = confirm(
+    `¿Activar la sirena más cercana?\n\n${nearest.name}\nDistancia aproximada: ${Math.round(nearest.distance)} m`
+  );
+
+  if (!ok) return;
+
+  const res = await fetch(SIREN_ACTIVATE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      siren_id: nearest.id,
+      duration_seconds: 60
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.status === "ok") {
+    await loadMapState();
+    alert(`Sirena activada: ${nearest.name}`);
+  } else {
+    alert("No fue posible activar la sirena");
+  }
+}
+
+
+
 
 
 function formatDuration(ms) {
 
-	if (!ms || ms < 0) return "-";
+if (!ms || ms < 0) return "-";
 
-	const totalSeconds = Math.floor(ms / 1000);
+const totalSeconds = Math.floor(ms / 1000);
 
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	const seconds = totalSeconds % 60;
+const hours = Math.floor(totalSeconds / 3600);
+const minutes = Math.floor((totalSeconds % 3600) / 60);
+const seconds = totalSeconds % 60;
 
-	if (hours > 0) {
-		return `${hours}h ${minutes}m`;
-	}
+if (hours > 0) {
+return `${hours}h ${minutes}m`;
+}
 
-	return `${minutes}m ${seconds}s`;
+return `${minutes}m ${seconds}s`;
 }
 
 function getSlaColor(minutes) {
 
-	if (minutes < 5) {
-		return "#16a34a";
-	}
+if (minutes < 5) {
+return "#16a34a";
+}
 
-	if (minutes < 10) {
-		return "#ea580c";
-	}
+if (minutes < 10) {
+return "#ea580c";
+}
 
-	return "#dc2626";
+return "#dc2626";
 }
 
 
 
 async function openTicketPanel(ticketId) {
 
-	try {
+try {
 
-		const res = await fetch(
-				`${TICKET_URL}/${ticketId}`
-				);
+const res = await fetch(
+		`${TICKET_URL}/${ticketId}`
+		);
 
-		const data = await res.json();
+const data = await res.json();
 
-		const ticket = data.ticket;
+const ticket = data.ticket;
+ selectedTicket = ticket;	
+const now = Date.now();
 
-		const now = Date.now();
+const createdAt = new Date(ticket.created_at).getTime();
 
-		const createdAt = new Date(ticket.created_at).getTime();
+const assignedAt = ticket.assigned_at
+	? new Date(ticket.assigned_at).getTime()
+	: null;
 
-		const assignedAt = ticket.assigned_at
-			? new Date(ticket.assigned_at).getTime()
-			: null;
+const resolvedAt = ticket.resolved_at
+	? new Date(ticket.resolved_at).getTime()
+	: null;
 
-		const resolvedAt = ticket.resolved_at
-			? new Date(ticket.resolved_at).getTime()
-			: null;
+const totalElapsed = now - createdAt;
 
-		const totalElapsed = now - createdAt;
+const assignmentTime =
+	assignedAt
+	? assignedAt - createdAt
+	: null;
 
-		const assignmentTime =
-			assignedAt
-			? assignedAt - createdAt
-			: null;
+const resolutionTime =
+	resolvedAt
+	? resolvedAt - createdAt
+	: null;
 
-		const resolutionTime =
-			resolvedAt
-			? resolvedAt - createdAt
-			: null;
+const elapsedMinutes = totalElapsed / 60000;
 
-		const elapsedMinutes = totalElapsed / 60000;
-
-		const slaColor = getSlaColor(elapsedMinutes);
-
-
+const slaColor = getSlaColor(elapsedMinutes);
 
 
 
 
-		document.getElementById(
-				"ticketTitle"
-				).textContent = `🚨 ${ticket.title}`;
-
-		const contactsHtml =
-			data.emergency_contacts
-			.map(c => `
-					<div class="contact-card">
-					<strong>${c.name}</strong><br>
-					${c.relationship}<br>
-					📞 ${c.phone}
-					</div>
-					`)
-			.join("");
-
-		const notesHtml =
-			data.notes
-			.map(n => `
-					<div class="timeline-item">
-					<div>${n.note}</div>
-					<div class="timeline-date">
-					${n.author_name || "-"} ·
-					${new Date(n.created_at).toLocaleString()}
-					</div>
-					</div>
-					`)
-			.join("");
-
-		const actionsHtml =
-			data.actions
-			.map(a => `
-					<div class="timeline-item">
-					<strong>${a.action_type}</strong><br>
-					${a.description}
-					<div class="timeline-date">
-					${new Date(a.created_at).toLocaleString()}
-					</div>
-					</div>
-					`)
-			.join("");
 
 
-		document.getElementById(
-				"ticketContent"
-			).innerHTML = `
-		<div class="ticket-content-section">
+document.getElementById(
+		"ticketTitle"
+		).textContent = `🚨 ${ticket.title}`;
 
-		<strong>SLA</strong><br><br>
+const contactsHtml =
+	data.emergency_contacts
+	.map(c => `
+			<div class="contact-card">
+			<strong>${c.name}</strong><br>
+			${c.relationship}<br>
+			📞 ${c.phone}
+			</div>
+			`)
+	.join("");
 
-		<div style="color:${slaColor}; font-size:18px; font-weight:bold;">
-		⏱️ ${formatDuration(totalElapsed)}
+const notesHtml =
+	data.notes
+	.map(n => `
+			<div class="timeline-item">
+			<div>${n.note}</div>
+			<div class="timeline-date">
+			${n.author_name || "-"} ·
+			${new Date(n.created_at).toLocaleString()}
+			</div>
+			</div>
+			`)
+	.join("");
+
+const actionsHtml =
+	data.actions
+	.map(a => `
+			<div class="timeline-item">
+			<strong>${a.action_type}</strong><br>
+			${a.description}
+			<div class="timeline-date">
+			${new Date(a.created_at).toLocaleString()}
+			</div>
+			</div>
+			`)
+	.join("");
+
+
+document.getElementById(
+		"ticketContent"
+	).innerHTML = `
+<div class="ticket-content-section">
+
+<strong>SLA</strong><br><br>
+
+<div style="color:${slaColor}; font-size:18px; font-weight:bold;">
+⏱️ ${formatDuration(totalElapsed)}
+</div>
+
+<br>
+
+🎯 Asignación:
+${formatDuration(assignmentTime)}
+
+<br>
+
+✅ Resolución:
+${formatDuration(resolutionTime)}
+
+</div>
+
+
+
+<div class="ticket-content-section">
+<strong>Vecino:</strong><br>
+${ticket.citizen_name || "-"}<br>
+📞 ${ticket.citizen_phone || "-"}<br>
+📍 ${ticket.declared_address || "-"}
+</div>
+
+<div class="ticket-content-section">
+<strong>Resolutor:</strong><br>
+👮 ${ticket.resolver_name || "Sin asignar"}
+
+<div class="ticket-actions">
+
+<button onclick="callCitizen()">
+📞 Llamar vecino
+</button>
+
+<button onclick="callEmergencyContact()">
+🚨 Contacto emergencia
+</button>
+
+<button onclick="activateNearestSiren()">
+	🚨 Activar sirena
+	</button>
+
+	</div>
 	</div>
 
-		<br>
 
-		🎯 Asignación:
-		${formatDuration(assignmentTime)}
+	<div class="ticket-content-section">
+	<strong>Contactos de emergencia</strong>
+	${contactsHtml || "Sin contactos"}
+</div>
 
-	<br>
+	<div class="ticket-content-section">
+	<strong>Notas</strong>
+	${notesHtml || "Sin notas"}
+</div>
 
-		✅ Resolución:
-		${formatDuration(resolutionTime)}
+	<div class="ticket-content-section">
+	<strong>Historial</strong>
+	${actionsHtml}
+</div>
+	`;
 
-	</div>
-
-
-
-		<div class="ticket-content-section">
-		<strong>Vecino:</strong><br>
-		${ticket.citizen_name || "-"}<br>
-		📞 ${ticket.citizen_phone || "-"}<br>
-		📍 ${ticket.declared_address || "-"}
-	</div>
-
-		<div class="ticket-content-section">
-		<strong>Resolutor:</strong><br>
-		👮 ${ticket.resolver_name || "Sin asignar"}
-
-	<div class="ticket-actions">
-
-		<button onclick="callCitizen()">
-		📞 Llamar vecino
-		</button>
-
-		<button onclick="callEmergencyContact()">
-		🚨 Contacto emergencia
-		</button>
-
-		<button onclick="activateNearestSiren()">
-		🚨 Activar sirena
-		</button>
-
-		</div>
-		</div>
-
-
-		<div class="ticket-content-section">
-		<strong>Contactos de emergencia</strong>
-		${contactsHtml || "Sin contactos"}
-	</div>
-
-		<div class="ticket-content-section">
-		<strong>Notas</strong>
-		${notesHtml || "Sin notas"}
-	</div>
-
-		<div class="ticket-content-section">
-		<strong>Historial</strong>
-		${actionsHtml}
-	</div>
-		`;
-
-	document
-		.getElementById("ticketPanel")
-		.classList.remove("hidden");
+document
+	.getElementById("ticketPanel")
+	.classList.remove("hidden");
 
 } catch (error) {
 
-	console.error(error);
+console.error(error);
 
-	alert("No fue posible cargar el ticket");
+alert("No fue posible cargar el ticket");
 }
 }
 
 
 async function loadMapState() {
 try {
-	const res = await fetch(MAP_STATE_URL);
-	const data = await res.json();
+const res = await fetch(MAP_STATE_URL);
+const data = await res.json();
 
-	const devices = data.devices || [];
-	const sirens = data.sirens || [];
+const devices = data.devices || [];
+const sirens = data.sirens || [];
+      currentSirens = sirens;
+const tickets = data.tickets || [];
+const resolvers = data.resolvers || [];
 
-	const tickets = data.tickets || [];
-	const resolvers = data.resolvers || [];
+const visibleTickets = tickets.filter(
+		t => t.state !== "CLOSED"
+		);
+const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
+const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
 
-	const visibleTickets = tickets.filter(
-			t => t.state !== "CLOSED"
-			);
-	const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
-	const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
+const mobileSos = visibleTickets.length;
+document.getElementById("status").textContent = "conectado";
+document.getElementById("status").className = "online";
+document.getElementById("count").textContent = devices.length;
+document.getElementById("activeSosCount").textContent = activeSos;
+document.getElementById("recentSosCount").textContent = recentSos;
 
-	const mobileSos = visibleTickets.length;
-	document.getElementById("status").textContent = "conectado";
-	document.getElementById("status").className = "online";
-	document.getElementById("count").textContent = devices.length;
-	document.getElementById("activeSosCount").textContent = activeSos;
-	document.getElementById("recentSosCount").textContent = recentSos;
-
-	document.getElementById("mobileSosCount").textContent = mobileSos;
+document.getElementById("mobileSosCount").textContent = mobileSos;
 
 
-	document.getElementById("sirenCount").textContent = sirens.length;
-	document.getElementById("lastUpdate").textContent =
-		new Date().toLocaleTimeString();
-	document.getElementById("totalNodes").textContent =
-		devices.length +
-		visibleTickets.length +
-		sirens.length +
-	resolvers.length;
+document.getElementById("sirenCount").textContent = sirens.length;
+document.getElementById("lastUpdate").textContent =
+	new Date().toLocaleTimeString();
+document.getElementById("totalNodes").textContent =
+	devices.length +
+	visibleTickets.length +
+	sirens.length +
+resolvers.length;
 
-	devices.forEach(renderDevice);
-	sirens.forEach(renderSiren);
-	visibleTickets.forEach(renderTicket);
-	resolvers.forEach(renderResolver);
+devices.forEach(renderDevice);
+sirens.forEach(renderSiren);
+visibleTickets.forEach(renderTicket);
+resolvers.forEach(renderResolver);
 
 if (!userMovedMap) {
-  const bounds = [];
+const bounds = [];
 
-  visibleTickets.forEach(t => {
-    bounds.push([t.latitude, t.longitude]);
-  });
+visibleTickets.forEach(t => {
+bounds.push([t.latitude, t.longitude]);
+});
 
-  resolvers.forEach(r => {
-    bounds.push([r.latitude, r.longitude]);
-  });
+resolvers.forEach(r => {
+bounds.push([r.latitude, r.longitude]);
+});
 
-  devices.forEach(d => {
-    bounds.push([d.latitude, d.longitude]);
-  });
+devices.forEach(d => {
+bounds.push([d.latitude, d.longitude]);
+});
 
-  sirens.forEach(s => {
-    bounds.push([s.latitude, s.longitude]);
-  });
+sirens.forEach(s => {
+bounds.push([s.latitude, s.longitude]);
+});
 
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, {
-      padding: [50, 50],
-      maxZoom: 17
-    });
+if (bounds.length > 0) {
+map.fitBounds(bounds, {
+padding: [50, 50],
+maxZoom: 17
+});
 
-    mapInitialized = true;
-  } else if (!mapInitialized) {
-    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-    mapInitialized = true;
-  }
+mapInitialized = true;
+} else if (!mapInitialized) {
+map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+mapInitialized = true;
+}
 }
 
 const activeTicketKeys = new Set(
-  visibleTickets.map(t => t.id)
+visibleTickets.map(t => t.id)
 );
 
 Object.keys(mobileMarkers).forEach(key => {
-  if (!activeTicketKeys.has(key)) {
-    map.removeLayer(mobileMarkers[key]);
-    delete mobileMarkers[key];
-  }
+if (!activeTicketKeys.has(key)) {
+map.removeLayer(mobileMarkers[key]);
+delete mobileMarkers[key];
+}
 });
 
 
