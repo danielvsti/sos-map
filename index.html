@@ -266,6 +266,9 @@ font-size: 22px;
   z-index: 1000;
 }
 
+
+
+
 .hidden {
   display: none;
 }
@@ -294,22 +297,46 @@ font-size: 22px;
   border-bottom: 1px solid #f3f4f6;
 }
 
+
+.ticket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ticket-actions button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.ticket-actions button:hover {
+  background: #1d4ed8;
+}
+
+
+
 .timeline-item {
-  margin-bottom: 12px;
-  padding-left: 12px;
-  border-left: 3px solid #2563eb;
+margin-bottom: 12px;
+padding-left: 12px;
+border-left: 3px solid #2563eb;
 }
 
 .timeline-date {
-  font-size: 12px;
-  color: #6b7280;
+font-size: 12px;
+color: #6b7280;
 }
 
 .contact-card {
-  background: #f9fafb;
-  padding: 10px;
-  border-radius: 10px;
-  margin-top: 8px;
+background: #f9fafb;
+padding: 10px;
+border-radius: 10px;
+margin-top: 8px;
 }
 
 
@@ -377,10 +404,10 @@ Total nodos:
 <div id="map"></div>
 
 <div id="ticketPanel" class="ticket-panel hidden">
-  <div class="ticket-header">
-    <span id="ticketTitle">Ticket</span>
+<div class="ticket-header">
+<span id="ticketTitle">Ticket</span>
 
-    <button onclick="closeTicketPanel()">✖</button>
+<button onclick="closeTicketPanel()">✖</button>
   </div>
 
   <div id="ticketContent">
@@ -716,9 +743,10 @@ if (!mobileMarkers[ticket.id]) {
 }
 
 
-mobileMarkers[ticket.id]
-.bindPopup(popup)
-.on("click", () => openTicketPanel(ticket.id));
+mobileMarkers[ticket.id].on(
+  "click",
+() => openTicketPanel(ticket.id)
+);
 
 
 
@@ -761,6 +789,21 @@ function closeTicketPanel() {
     .getElementById("ticketPanel")
     .classList.add("hidden");
 }
+
+function callCitizen() {
+  alert("Próximamente: llamada al vecino");
+}
+
+function callEmergencyContact() {
+  alert("Próximamente: llamada al contacto de emergencia");
+}
+
+function activateNearestSiren() {
+  alert("Próximamente: activación de sirena");
+}
+
+
+
 
 async function openTicketPanel(ticketId) {
 
@@ -831,10 +874,27 @@ async function openTicketPanel(ticketId) {
         📍 ${ticket.declared_address || "-"}
       </div>
 
-      <div class="ticket-content-section">
-        <strong>Resolutor:</strong><br>
-        👮 ${ticket.resolver_name || "Sin asignar"}
-      </div>
+<div class="ticket-content-section">
+  <strong>Resolutor:</strong><br>
+  👮 ${ticket.resolver_name || "Sin asignar"}
+
+  <div class="ticket-actions">
+
+    <button onclick="callCitizen()">
+      📞 Llamar vecino
+    </button>
+
+    <button onclick="callEmergencyContact()">
+      🚨 Contacto emergencia
+    </button>
+
+    <button onclick="activateNearestSiren()">
+      🚨 Activar sirena
+    </button>
+
+  </div>
+</div>
+
 
       <div class="ticket-content-section">
         <strong>Contactos de emergencia</strong>
