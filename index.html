@@ -14,21 +14,21 @@ html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
 position: absolute;
 top: 28px;
 left: 32px;
-z-index: 999;
+      z-index: 999;
 background: white;
 padding: 18px 22px;
-border-radius: 18px;
-box-shadow: 0 4px 18px rgba(0,0,0,.25);
-font-size: 20px;
-min-width: 270px;
+	 border-radius: 18px;
+	 box-shadow: 0 4px 18px rgba(0,0,0,.25);
+	 font-size: 20px;
+	 min-width: 270px;
 }
 
 .online { color: green; font-weight: bold; }
 .offline { color: red; font-weight: bold; }
 
 .leaflet-control-zoom {
-margin-top: 430px !important;
-margin-left: 32px !important;
+	margin-top: 430px !important;
+	margin-left: 32px !important;
 }
 
 .logo-vsti {
@@ -38,168 +38,168 @@ margin: 0 auto 8px auto;
 }
 
 .panel-title {
-text-align: center;
-font-size: 20px;
-font-weight: bold;
+	text-align: center;
+	font-size: 20px;
+	font-weight: bold;
 color: #374151;
-margin-bottom: 10px;
+       margin-bottom: 10px;
 }
 
 .panel-small {
-font-size: 18px;
+	font-size: 18px;
 }
 
 .resolver-marker-available {
 background: #16a34a;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 38px;
 height: 38px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-size: 20px;
+	font-size: 20px;
 }
 
 .resolver-marker-busy {
 background: #ea580c;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-size: 22px;
+	font-size: 22px;
 }
 
 .resolver-marker-enroute {
 background: #2563eb;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-size: 22px;
+	font-size: 22px;
 }
 
 .sos-marker-normal {
 background: #15803d;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 34px;
 height: 34px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-box-shadow: 0 2px 8px rgba(0,0,0,.35);
-font-weight: bold;
-font-size: 11px;
+	box-shadow: 0 2px 8px rgba(0,0,0,.35);
+	font-weight: bold;
+	font-size: 11px;
 }
 
 .sos-marker-recent {
 background: #ea580c;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 38px;
 height: 38px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-box-shadow: 0 2px 10px rgba(0,0,0,.4);
-font-weight: bold;
-font-size: 11px;
+	box-shadow: 0 2px 10px rgba(0,0,0,.4);
+	font-weight: bold;
+	font-size: 11px;
 }
 
 .sos-marker-active {
 background: #dc2626;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-weight: bold;
-font-size: 12px;
+	font-weight: bold;
+	font-size: 12px;
 animation: sosPulse 1s infinite;
 }
 
 @keyframes sosPulse {
-0% {
-box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+	0% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,.8);
 transform: scale(1);
-}
-70% {
-box-shadow: 0 0 0 28px rgba(220,38,38,0);
+	}
+	70% {
+		box-shadow: 0 0 0 28px rgba(220,38,38,0);
 transform: scale(1.12);
-}
-100% {
-box-shadow: 0 0 0 0 rgba(220,38,38,0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,0);
 transform: scale(1);
-}
+	}
 }
 
 .siren-marker {
 background: #991b1b;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 38px;
 height: 38px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-box-shadow: 0 2px 8px rgba(0,0,0,.4);
-font-size: 20px;
+	box-shadow: 0 2px 8px rgba(0,0,0,.4);
+	font-size: 20px;
 }
 
 .siren-marker-active {
 background: #dc2626;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-size: 22px;
+	font-size: 22px;
 animation: sirenPulse 1s infinite;
 }
 
 @keyframes sirenPulse {
-0% {
-box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+	0% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,.8);
 transform: scale(1);
-}
-70% {
-box-shadow: 0 0 0 28px rgba(220,38,38,0);
+	}
+	70% {
+		box-shadow: 0 0 0 28px rgba(220,38,38,0);
 transform: scale(1.12);
-}
-100% {
-box-shadow: 0 0 0 0 rgba(220,38,38,0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,0);
 transform: scale(1);
-}
+	}
 }
 
 .btn-siren {
-margin-top: 10px;
+	margin-top: 10px;
 background: #dc2626;
 color: white;
 border: none;
 padding: 8px 12px;
-border-radius: 8px;
+	 border-radius: 8px;
 cursor: pointer;
-font-weight: bold;
+	font-weight: bold;
 }
 
 .btn-off {
@@ -213,41 +213,41 @@ background: #15803d;
 .mobile-sos-active {
 background: #2563eb;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-size: 22px;
+	font-size: 22px;
 animation: sosPulse 1s infinite;
 }
 
 .mobile-sos-ack {
 background: #ca8a04;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-size: 22px;
+	font-size: 22px;
 }
 
 .mobile-sos-cancelled {
 background: #6b7280;
 color: white;
-border-radius: 50%;
+       border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-align-items: center;
-justify-content: center;
+	 align-items: center;
+	 justify-content: center;
 border: 3px solid white;
-font-size: 22px;
+	font-size: 22px;
 }
 
 
@@ -256,14 +256,14 @@ position: absolute;
 top: 20px;
 right: 20px;
 width: 420px;
-max-height: calc(100vh - 40px);
-overflow-y: auto;
+       max-height: calc(100vh - 40px);
+       overflow-y: auto;
 
 background: white;
-border-radius: 16px;
-box-shadow: 0 8px 24px rgba(0,0,0,.25);
+	    border-radius: 16px;
+	    box-shadow: 0 8px 24px rgba(0,0,0,.25);
 
-z-index: 2000;
+	    z-index: 2000;
 }
 
 
@@ -275,44 +275,44 @@ display: none;
 
 .ticket-header {
 display: flex;
-justify-content: space-between;
-align-items: center;
+	 justify-content: space-between;
+	 align-items: center;
 
 padding: 16px;
-border-bottom: 1px solid #e5e7eb;
+	 border-bottom: 1px solid #e5e7eb;
 
-font-size: 20px;
-font-weight: bold;
+	 font-size: 20px;
+	 font-weight: bold;
 }
 
 .ticket-header button {
 border: none;
 background: none;
 cursor: pointer;
-font-size: 20px;
+	font-size: 20px;
 }
 
 .ticket-content-section {
 padding: 16px;
-border-bottom: 1px solid #f3f4f6;
+	 border-bottom: 1px solid #f3f4f6;
 }
 
 
 .ticket-actions {
 display: flex;
-flex-wrap: wrap;
+	 flex-wrap: wrap;
 gap: 8px;
-margin-top: 12px;
+     margin-top: 12px;
 }
 
 .ticket-actions button {
 border: none;
-border-radius: 8px;
+	border-radius: 8px;
 padding: 10px 14px;
 background: #2563eb;
 color: white;
 cursor: pointer;
-font-size: 14px;
+	font-size: 14px;
 }
 
 .ticket-actions button:hover {
@@ -322,21 +322,21 @@ background: #1d4ed8;
 
 
 .timeline-item {
-margin-bottom: 12px;
-padding-left: 12px;
-border-left: 3px solid #2563eb;
+	margin-bottom: 12px;
+	padding-left: 12px;
+	border-left: 3px solid #2563eb;
 }
 
 .timeline-date {
-font-size: 12px;
+	font-size: 12px;
 color: #6b7280;
 }
 
 .contact-card {
 background: #f9fafb;
 padding: 10px;
-border-radius: 10px;
-margin-top: 8px;
+	 border-radius: 10px;
+	 margin-top: 8px;
 }
 
 
@@ -430,9 +430,9 @@ const DEFAULT_CENTER = [-33.01895, -71.55090];
 const DEFAULT_ZOOM = 15;
 
 const map = L.map("map").setView(
-DEFAULT_CENTER,
-DEFAULT_ZOOM
-);
+		DEFAULT_CENTER,
+		DEFAULT_ZOOM
+		);
 const ticketPanel = document.getElementById("ticketPanel");
 
 L.DomEvent.disableClickPropagation(ticketPanel);
@@ -445,12 +445,12 @@ let userMovedMap = false;
 
 
 map.on("dragstart", () => {
-userMovedMap = true;
-});
+		userMovedMap = true;
+		});
 
 map.on("zoomstart", () => {
-userMovedMap = true;
-});
+		userMovedMap = true;
+		});
 
 
 L.control.zoom({ position: "topleft" }).addTo(map);
@@ -460,15 +460,15 @@ attribution: "© OpenStreetMap"
 }).addTo(map);
 
 function getSosIcon(device) {
-let cssClass = "sos-marker-normal";
+	let cssClass = "sos-marker-normal";
 
-if (device.sos_state === "ACTIVE") {
-cssClass = "sos-marker-active";
-} else if (device.sos_state === "RECENT") {
-cssClass = "sos-marker-recent";
-}
+	if (device.sos_state === "ACTIVE") {
+		cssClass = "sos-marker-active";
+	} else if (device.sos_state === "RECENT") {
+		cssClass = "sos-marker-recent";
+	}
 
-return L.divIcon({
+	return L.divIcon({
 className: "",
 html: `<div class="${cssClass}">SOS</div>`,
 iconSize: [60, 60],
@@ -503,9 +503,9 @@ const mobileMarkers = {};
 const resolverMarkers = {};
 
 async function activateSiren(sirenId) {
-if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
+	if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
 
-const res = await fetch(SIREN_ACTIVATE_URL, {
+	const res = await fetch(SIREN_ACTIVATE_URL, {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
@@ -517,14 +517,14 @@ duration_seconds: 60
 const data = await res.json();
 
 if (data.status === "ok") {
-await loadMapState();
+	await loadMapState();
 } else {
-alert("Error activando sirena");
+	alert("Error activando sirena");
 }
 }
 
 async function deactivateSiren(sirenId) {
-const res = await fetch(SIREN_DEACTIVATE_URL, {
+	const res = await fetch(SIREN_DEACTIVATE_URL, {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({ siren_id: sirenId })
@@ -533,14 +533,14 @@ body: JSON.stringify({ siren_id: sirenId })
 const data = await res.json();
 
 if (data.status === "ok") {
-await loadMapState();
+	await loadMapState();
 } else {
-alert("Error apagando sirena");
+	alert("Error apagando sirena");
 }
 }
 
 async function ackSos(deviceId) {
-const res = await fetch(ACK_SOS_URL, {
+	const res = await fetch(ACK_SOS_URL, {
 method: "POST",
 headers: {
 "Content-Type": "application/json"
@@ -553,14 +553,14 @@ device_id: deviceId
 const data = await res.json();
 
 if (data.status === "ok") {
-await loadMapState();
+	await loadMapState();
 } else {
-alert("No fue posible reconocer el SOS");
+	alert("No fue posible reconocer el SOS");
 }
 }
 
 async function ackMobileSos(eventId) {
-const res = await fetch(ACK_MOBILE_SOS_URL, {
+	const res = await fetch(ACK_MOBILE_SOS_URL, {
 method: "POST",
 headers: {
 "Content-Type": "application/json"
@@ -574,162 +574,179 @@ operator: "central-web"
 const data = await res.json();
 
 if (data.status === "ok") {
-await loadMapState();
+	await loadMapState();
 } else {
-alert("No fue posible reconocer el SOS móvil");
+	alert("No fue posible reconocer el SOS móvil");
 }
 }
 
 
 function getTicketIcon(ticket) {
 
-let cssClass = "mobile-sos-active";
+	let cssClass = "mobile-sos-active";
 
-if (
-  ticket.state === "ACKNOWLEDGED" ||
-  ticket.state === "ASSIGNED"
-) {
-  cssClass = "mobile-sos-ack";
-}
+	if (
+			ticket.state === "ACKNOWLEDGED" ||
+			ticket.state === "ASSIGNED"
+	   ) {
+		cssClass = "mobile-sos-ack";
+	}
 
-if (
-  ticket.state === "RESOLVED" ||
-  ticket.state === "CLOSED"
-) {
-  cssClass = "mobile-sos-cancelled";
-}
+	if (
+			ticket.state === "RESOLVED" ||
+			ticket.state === "CLOSED"
+	   ) {
+		cssClass = "mobile-sos-cancelled";
+	}
 
-return L.divIcon({
-  className: "",
-  html: `<div class="${cssClass}">🚨</div>`,
-  iconSize: [70, 70],
-  iconAnchor: [35, 35]
+	return L.divIcon({
+className: "",
+html: `<div class="${cssClass}">🚨</div>`,
+iconSize: [70, 70],
+iconAnchor: [35, 35]
 });
 }
 
 function getResolverIcon(resolver) {
 
-let cssClass = "resolver-marker-available";
+	let cssClass = "resolver-marker-available";
 
-if (resolver.status === "BUSY") {
-  cssClass = "resolver-marker-busy";
-}
+	if (resolver.status === "BUSY") {
+		cssClass = "resolver-marker-busy";
+	}
 
-if (resolver.status === "EN_ROUTE") {
-  cssClass = "resolver-marker-enroute";
-}
+	if (resolver.status === "EN_ROUTE") {
+		cssClass = "resolver-marker-enroute";
+	}
 
-return L.divIcon({
-  className: "",
-  html: `<div class="${cssClass}">👮</div>`,
-  iconSize: [50, 50],
-  iconAnchor: [25, 25]
+	return L.divIcon({
+className: "",
+html: `<div class="${cssClass}">👮</div>`,
+iconSize: [50, 50],
+iconAnchor: [25, 25]
 });
 }
 
 
 function renderDevice(device) {
-const name = device.name || `Botón SOS ${device.id}`;
-const icon = getSosIcon(device);
+	const name = device.name || `Botón SOS ${device.id}`;
+	const icon = getSosIcon(device);
 
-const sosText =
-	device.sos_state === "ACTIVE"
-	? '<span style="color:#dc2626;font-weight:bold;">🚨 SOS ACTIVO</span>'
-	: device.sos_state === "RECENT"
-	? '<span style="color:#ea580c;font-weight:bold;">⚠️ SOS RECIENTE</span>'
-	: '<span style="color:#15803d;font-weight:bold;">✅ NORMAL</span>';
+	const sosText =
+		device.sos_state === "ACTIVE"
+		? '<span style="color:#dc2626;font-weight:bold;">🚨 SOS ACTIVO</span>'
+		: device.sos_state === "RECENT"
+		? '<span style="color:#ea580c;font-weight:bold;">⚠️ SOS RECIENTE</span>'
+		: '<span style="color:#15803d;font-weight:bold;">✅ NORMAL</span>';
 
-const popup = `
-	<strong>${name}</strong><br>
-	ID: ${device.id}<br>
-	Estado SOS: ${sosText}<br>
-	Estado dispositivo: ${device.online ? "Online" : "Offline"}<br>
-	Último evento: ${device.last_event_type ?? "-"}<br>
-	Latitud: ${device.latitude}<br>
-	Longitud: ${device.longitude}<br>
-	Velocidad: ${device.speed ?? "-"} km/h<br>
-	Dirección: ${device.direction ?? "-"}°<br>
-	Satélites: ${device.satellites ?? "-"}<br>
-	GPS válido: ${device.valid ? "Sí" : "No"}<br>
-	Última actualización: ${device.last_seen ?? "-"}<br>
-	${
-		device.sos_state === "ACTIVE" || device.sos_state === "RECENT"
-			? `<br><button class="btn-siren btn-ack" onclick="ackSos('${device.id}')">
-			✅ Marcar como atendido
-			</button>`
-			: ""
+	const popup = `
+		<strong>${name}</strong><br>
+		ID: ${device.id}<br>
+		Estado SOS: ${sosText}<br>
+		Estado dispositivo: ${device.online ? "Online" : "Offline"}<br>
+		Último evento: ${device.last_event_type ?? "-"}<br>
+		Latitud: ${device.latitude}<br>
+		Longitud: ${device.longitude}<br>
+		Velocidad: ${device.speed ?? "-"} km/h<br>
+		Dirección: ${device.direction ?? "-"}°<br>
+		Satélites: ${device.satellites ?? "-"}<br>
+		GPS válido: ${device.valid ? "Sí" : "No"}<br>
+		Última actualización: ${device.last_seen ?? "-"}<br>
+		${
+			device.sos_state === "ACTIVE" || device.sos_state === "RECENT"
+				? `<br><button class="btn-siren btn-ack" onclick="ackSos('${device.id}')">
+				✅ Marcar como atendido
+				</button>`
+				: ""
+		}
+	`;
+
+	if (!deviceMarkers[device.id]) {
+		deviceMarkers[device.id] = L.marker(
+				[device.latitude, device.longitude],
+				{ icon }
+				).addTo(map);
+	} else {
+		deviceMarkers[device.id].setLatLng([
+				device.latitude,
+				device.longitude
+		]);
+
+		deviceMarkers[device.id].setIcon(icon);
 	}
-`;
 
-if (!deviceMarkers[device.id]) {
-	deviceMarkers[device.id] = L.marker(
-			[device.latitude, device.longitude],
-			{ icon }
-			).addTo(map);
-} else {
-	deviceMarkers[device.id].setLatLng([
-			device.latitude,
-			device.longitude
-	]);
-
-	deviceMarkers[device.id].setIcon(icon);
-}
-
-deviceMarkers[device.id].bindPopup(popup);
+	deviceMarkers[device.id].bindPopup(popup);
 }
 
 function renderSiren(siren) {
-const active = siren.active === true || siren.state === "ON";
-const icon = active ? sirenActiveIcon : sirenIcon;
+	const active = siren.active === true || siren.state === "ON";
+	const icon = active ? sirenActiveIcon : sirenIcon;
 
-const popup = `
-	<strong>${siren.name}</strong><br>
-	ID: ${siren.id}<br>
-	Estado: ${
-		active
-			? '<strong style="color:red;">ACTIVADA</strong>'
-			: '<strong>Apagada</strong>'
-	}<br>
+	const popup = `
+		<strong>${siren.name}</strong><br>
+		ID: ${siren.id}<br>
+		Estado: ${
+			active
+				? '<strong style="color:red;">ACTIVADA</strong>'
+				: '<strong>Apagada</strong>'
+		}<br>
 Ubicación: ${siren.location ?? "-"}<br>
-	   ${
-		   active
-			   ? `<button class="btn-siren btn-off" onclick="deactivateSiren('${siren.id}')">Apagar sirena</button>`
-			   : `<button class="btn-siren" onclick="activateSiren('${siren.id}')">🚨 Activar sirena 60s</button>`
+		   ${
+			   active
+				   ? `<button class="btn-siren btn-off" onclick="deactivateSiren('${siren.id}')">Apagar sirena</button>`
+				   : `<button class="btn-siren" onclick="activateSiren('${siren.id}')">🚨 Activar sirena 60s</button>`
+		   }
+	   `;
+
+	   if (!sirenMarkers[siren.id]) {
+		   sirenMarkers[siren.id] = L.marker(
+				   [siren.latitude, siren.longitude],
+				   { icon }
+				   ).addTo(map);
+	   } else {
+		   sirenMarkers[siren.id].setLatLng([
+				   siren.latitude,
+				   siren.longitude
+		   ]);
+
+		   sirenMarkers[siren.id].setIcon(icon);
 	   }
-   `;
 
-   if (!sirenMarkers[siren.id]) {
-	   sirenMarkers[siren.id] = L.marker(
-			   [siren.latitude, siren.longitude],
-			   { icon }
-			   ).addTo(map);
-   } else {
-	   sirenMarkers[siren.id].setLatLng([
-			   siren.latitude,
-			   siren.longitude
-	   ]);
-
-	   sirenMarkers[siren.id].setIcon(icon);
-   }
-
-   sirenMarkers[siren.id].bindPopup(popup);
+	   sirenMarkers[siren.id].bindPopup(popup);
 }
 
 
 
 function renderTicket(ticket) {
 
-const popup = `
-<strong>🚨 ${ticket.title}</strong><br>
-Estado: <strong>${ticket.state}</strong><br>
-Tipo: ${ticket.alert_type}<br>
-Vecino: ${ticket.citizen_name ?? "-"}<br>
-Teléfono: ${ticket.citizen_phone ?? "-"}<br>
-Resolutor: ${ticket.resolver_name ?? "Sin asignar"}<br>
-Creado: ${ticket.created_at}<br>
-`;
+	const popup = `
+		<strong>🚨 ${ticket.title}</strong><br>
+		Estado: <strong>${ticket.state}</strong><br>
+		Tipo: ${ticket.alert_type}<br>
+		Vecino: ${ticket.citizen_name ?? "-"}<br>
+		Teléfono: ${ticket.citizen_phone ?? "-"}<br>
+		Resolutor: ${ticket.resolver_name ?? "Sin asignar"}<br>
+		Creado: ${ticket.created_at}<br>
+		`;
 
-const icon = getTicketIcon(ticket);
+	const icon = getTicketIcon(ticket);
+
+	if (!mobileMarkers[ticket.id]) {
+
+		mobileMarkers[ticket.id] = L.marker(
+				[ticket.latitude, ticket.longitude],
+				{ icon }
+				).addTo(map);
+
+	} else {
+
+		mobileMarkers[ticket.id].setLatLng([
+				ticket.latitude,
+				ticket.longitude
+		]);
+
+		mobileMarkers[ticket.id].setIcon(icon);
+	}
 
 if (!mobileMarkers[ticket.id]) {
 
@@ -737,6 +754,11 @@ if (!mobileMarkers[ticket.id]) {
     [ticket.latitude, ticket.longitude],
     { icon }
   ).addTo(map);
+
+  mobileMarkers[ticket.id].on(
+    "click",
+    () => openTicketPanel(ticket.id)
+  );
 
 } else {
 
@@ -749,298 +771,335 @@ if (!mobileMarkers[ticket.id]) {
 }
 
 
-mobileMarkers[ticket.id].on(
-  "click",
-() => openTicketPanel(ticket.id)
-);
-
-
 
 }
 
 
 function renderResolver(resolver) {
 
-const popup = `
-<strong>👮 ${resolver.full_name}</strong><br>
-Estado: ${resolver.status}<br>
-Teléfono: ${resolver.phone ?? "-"}<br>
-Última actualización: ${resolver.updated_at}
-`;
+	const popup = `
+		<strong>👮 ${resolver.full_name}</strong><br>
+		Estado: ${resolver.status}<br>
+		Teléfono: ${resolver.phone ?? "-"}<br>
+		Última actualización: ${resolver.updated_at}
+	`;
 
-const icon = getResolverIcon(resolver);
+	const icon = getResolverIcon(resolver);
 
-if (!resolverMarkers[resolver.id]) {
+	if (!resolverMarkers[resolver.id]) {
 
-  resolverMarkers[resolver.id] = L.marker(
-    [resolver.latitude, resolver.longitude],
-    { icon }
-  ).addTo(map);
+		resolverMarkers[resolver.id] = L.marker(
+				[resolver.latitude, resolver.longitude],
+				{ icon }
+				).addTo(map);
 
-} else {
+	} else {
 
-  resolverMarkers[resolver.id].setLatLng([
-    resolver.latitude,
-    resolver.longitude
-  ]);
+		resolverMarkers[resolver.id].setLatLng([
+				resolver.latitude,
+				resolver.longitude
+		]);
 
-  resolverMarkers[resolver.id].setIcon(icon);
-}
+		resolverMarkers[resolver.id].setIcon(icon);
+	}
 
-resolverMarkers[resolver.id].bindPopup(popup);
+	resolverMarkers[resolver.id].bindPopup(popup);
 }
 
 function closeTicketPanel(event) {
 
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
-  }
+	if (event) {
+		event.stopPropagation();
+		event.preventDefault();
+	}
 
-  document
-    .getElementById("ticketPanel")
-    .classList.add("hidden");
+	document
+		.getElementById("ticketPanel")
+		.classList.add("hidden");
 }
 
 
 function callCitizen() {
-  alert("Próximamente: llamada al vecino");
+	alert("Próximamente: llamada al vecino");
 }
 
 function callEmergencyContact() {
-  alert("Próximamente: llamada al contacto de emergencia");
+	alert("Próximamente: llamada al contacto de emergencia");
 }
 
 function activateNearestSiren() {
-  alert("Próximamente: activación de sirena");
+	alert("Próximamente: activación de sirena");
 }
 
+
+function formatDuration(ms) {
+
+	if (!ms || ms < 0) return "-";
+
+	const totalSeconds = Math.floor(ms / 1000);
+
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
+
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`;
+	}
+
+	return `${minutes}m ${seconds}s`;
+}
+
+function getSlaColor(minutes) {
+
+	if (minutes < 5) {
+		return "#16a34a";
+	}
+
+	if (minutes < 10) {
+		return "#ea580c";
+	}
+
+	return "#dc2626";
+}
 
 
 
 async function openTicketPanel(ticketId) {
 
-  try {
+	try {
 
-    const res = await fetch(
-      `${TICKET_URL}/${ticketId}`
-    );
+		const res = await fetch(
+				`${TICKET_URL}/${ticketId}`
+				);
 
-    const data = await res.json();
+		const data = await res.json();
 
-    const ticket = data.ticket;
+		const ticket = data.ticket;
 
-    document.getElementById(
-      "ticketTitle"
-    ).textContent = `🚨 ${ticket.title}`;
+		const now = Date.now();
 
-    const contactsHtml =
-      data.emergency_contacts
-        .map(c => `
-          <div class="contact-card">
-            <strong>${c.name}</strong><br>
-            ${c.relationship}<br>
-            📞 ${c.phone}
-          </div>
-        `)
-        .join("");
+		const createdAt = new Date(ticket.created_at).getTime();
 
-    const notesHtml =
-      data.notes
-        .map(n => `
-          <div class="timeline-item">
-            <div>${n.note}</div>
-            <div class="timeline-date">
-              ${n.author_name || "-"} ·
-              ${new Date(n.created_at).toLocaleString()}
-            </div>
-          </div>
-        `)
-        .join("");
+		const assignedAt = ticket.assigned_at
+			? new Date(ticket.assigned_at).getTime()
+			: null;
 
-    const actionsHtml =
-      data.actions
-        .map(a => `
-          <div class="timeline-item">
-            <strong>${a.action_type}</strong><br>
-            ${a.description}
-            <div class="timeline-date">
-              ${new Date(a.created_at).toLocaleString()}
-            </div>
-          </div>
-        `)
-        .join("");
+		const resolvedAt = ticket.resolved_at
+			? new Date(ticket.resolved_at).getTime()
+			: null;
 
-const elapsedMs = Date.now() - new Date(ticket.created_at).getTime();
-const elapsedMin = Math.floor(elapsedMs / 60000);
-const elapsedSec = Math.floor((elapsedMs % 60000) / 1000);
+		const totalElapsed = now - createdAt;
 
-const elapsedText = `${elapsedMin}m ${elapsedSec}s`;
+		const assignmentTime =
+			assignedAt
+			? assignedAt - createdAt
+			: null;
 
-    document.getElementById(
-      "ticketContent"
-    ).innerHTML = `
-      <div class="ticket-content-section">
-<strong>Estado:</strong> ${ticket.state}<br>
-<strong>Tipo:</strong> ${ticket.alert_type}<br>
-<strong>Prioridad:</strong> ${ticket.priority}<br>
-<strong>Tiempo transcurrido:</strong> ⏱️ ${elapsedText}
-</div>
+		const resolutionTime =
+			resolvedAt
+			? resolvedAt - createdAt
+			: null;
 
-      <div class="ticket-content-section">
-        <strong>Vecino:</strong><br>
-        ${ticket.citizen_name || "-"}<br>
-        📞 ${ticket.citizen_phone || "-"}<br>
-        📍 ${ticket.declared_address || "-"}
-      </div>
+		const elapsedMinutes = totalElapsed / 60000;
 
-<div class="ticket-content-section">
-  <strong>Resolutor:</strong><br>
-  👮 ${ticket.resolver_name || "Sin asignar"}
-
-  <div class="ticket-actions">
-
-    <button onclick="callCitizen()">
-      📞 Llamar vecino
-    </button>
-
-    <button onclick="callEmergencyContact()">
-      🚨 Contacto emergencia
-    </button>
-
-    <button onclick="activateNearestSiren()">
-      🚨 Activar sirena
-    </button>
-
-  </div>
-</div>
+		const slaColor = getSlaColor(elapsedMinutes);
 
 
-      <div class="ticket-content-section">
-        <strong>Contactos de emergencia</strong>
-        ${contactsHtml || "Sin contactos"}
-      </div>
 
-      <div class="ticket-content-section">
-        <strong>Notas</strong>
-        ${notesHtml || "Sin notas"}
-      </div>
 
-      <div class="ticket-content-section">
-        <strong>Historial</strong>
-        ${actionsHtml}
-      </div>
-    `;
 
-    document
-      .getElementById("ticketPanel")
-      .classList.remove("hidden");
 
-  } catch (error) {
+		document.getElementById(
+				"ticketTitle"
+				).textContent = `🚨 ${ticket.title}`;
 
-    console.error(error);
+		const contactsHtml =
+			data.emergency_contacts
+			.map(c => `
+					<div class="contact-card">
+					<strong>${c.name}</strong><br>
+					${c.relationship}<br>
+					📞 ${c.phone}
+					</div>
+					`)
+			.join("");
 
-    alert("No fue posible cargar el ticket");
-  }
+		const notesHtml =
+			data.notes
+			.map(n => `
+					<div class="timeline-item">
+					<div>${n.note}</div>
+					<div class="timeline-date">
+					${n.author_name || "-"} ·
+					${new Date(n.created_at).toLocaleString()}
+					</div>
+					</div>
+					`)
+			.join("");
+
+		const actionsHtml =
+			data.actions
+			.map(a => `
+					<div class="timeline-item">
+					<strong>${a.action_type}</strong><br>
+					${a.description}
+					<div class="timeline-date">
+					${new Date(a.created_at).toLocaleString()}
+					</div>
+					</div>
+					`)
+			.join("");
+
+
+		document.getElementById(
+				"ticketContent"
+			).innerHTML = `
+		<div class="ticket-content-section">
+
+		<strong>SLA</strong><br><br>
+
+		<div style="color:${slaColor}; font-size:18px; font-weight:bold;">
+		⏱️ ${formatDuration(totalElapsed)}
+	</div>
+
+		<br>
+
+		🎯 Asignación:
+		${formatDuration(assignmentTime)}
+
+	<br>
+
+		✅ Resolución:
+		${formatDuration(resolutionTime)}
+
+	</div>
+
+
+
+		<div class="ticket-content-section">
+		<strong>Vecino:</strong><br>
+		${ticket.citizen_name || "-"}<br>
+		📞 ${ticket.citizen_phone || "-"}<br>
+		📍 ${ticket.declared_address || "-"}
+	</div>
+
+		<div class="ticket-content-section">
+		<strong>Resolutor:</strong><br>
+		👮 ${ticket.resolver_name || "Sin asignar"}
+
+	<div class="ticket-actions">
+
+		<button onclick="callCitizen()">
+		📞 Llamar vecino
+		</button>
+
+		<button onclick="callEmergencyContact()">
+		🚨 Contacto emergencia
+		</button>
+
+		<button onclick="activateNearestSiren()">
+		🚨 Activar sirena
+		</button>
+
+		</div>
+		</div>
+
+
+		<div class="ticket-content-section">
+		<strong>Contactos de emergencia</strong>
+		${contactsHtml || "Sin contactos"}
+	</div>
+
+		<div class="ticket-content-section">
+		<strong>Notas</strong>
+		${notesHtml || "Sin notas"}
+	</div>
+
+		<div class="ticket-content-section">
+		<strong>Historial</strong>
+		${actionsHtml}
+	</div>
+		`;
+
+	document
+		.getElementById("ticketPanel")
+		.classList.remove("hidden");
+
+} catch (error) {
+
+	console.error(error);
+
+	alert("No fue posible cargar el ticket");
+}
 }
 
-/* kotto aqui inserto las funciones javascript  */
 
 async function loadMapState() {
 try {
-const res = await fetch(MAP_STATE_URL);
-const data = await res.json();
+	const res = await fetch(MAP_STATE_URL);
+	const data = await res.json();
 
-const devices = data.devices || [];
-const sirens = data.sirens || [];
+	const devices = data.devices || [];
+	const sirens = data.sirens || [];
 
-const tickets = data.tickets || [];
-const resolvers = data.resolvers || [];
+	const tickets = data.tickets || [];
+	const resolvers = data.resolvers || [];
 
-const visibleTickets = tickets.filter(
-t => t.state !== "CLOSED"
-);
-const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
-const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
+	const visibleTickets = tickets.filter(
+			t => t.state !== "CLOSED"
+			);
+	const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
+	const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
 
-const mobileSos = visibleTickets.length;
-document.getElementById("status").textContent = "conectado";
-document.getElementById("status").className = "online";
-document.getElementById("count").textContent = devices.length;
-document.getElementById("activeSosCount").textContent = activeSos;
-document.getElementById("recentSosCount").textContent = recentSos;
+	const mobileSos = visibleTickets.length;
+	document.getElementById("status").textContent = "conectado";
+	document.getElementById("status").className = "online";
+	document.getElementById("count").textContent = devices.length;
+	document.getElementById("activeSosCount").textContent = activeSos;
+	document.getElementById("recentSosCount").textContent = recentSos;
 
-document.getElementById("mobileSosCount").textContent = mobileSos;
-
-
-document.getElementById("sirenCount").textContent = sirens.length;
-document.getElementById("lastUpdate").textContent =
-	new Date().toLocaleTimeString();
-document.getElementById("totalNodes").textContent =
-devices.length +
-visibleTickets.length +
-sirens.length;
-
-devices.forEach(renderDevice);
-sirens.forEach(renderSiren);
-visibleTickets.forEach(renderTicket);
-resolvers.forEach(renderResolver);
-
-if (!userMovedMap) {
-  const bounds = [];
-visibleTickets.forEach(t => {
-bounds.push([t.latitude, t.longitude]);
-resolvers.forEach(r => {
-  bounds.push([r.latitude, r.longitude]);
-});
-
-});
-
-  devices.forEach(d => {
-bounds.push([d.latitude, d.longitude]);
-});
-
-sirens.forEach(s => {
-bounds.push([s.latitude, s.longitude]);
-});
-
-if (bounds.length > 0) {
-map.fitBounds(bounds, {
-padding: [50, 50],
-maxZoom: 17
-});
-
-mapInitialized = true;
-} else if (!mapInitialized) {
-map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-mapInitialized = true;
-}
-}
+	document.getElementById("mobileSosCount").textContent = mobileSos;
 
 
-const activeTicketKeys = new Set(
-  visibleTickets.map(t => t.id)
-);
+	document.getElementById("sirenCount").textContent = sirens.length;
+	document.getElementById("lastUpdate").textContent =
+		new Date().toLocaleTimeString();
+	document.getElementById("totalNodes").textContent =
+		devices.length +
+		visibleTickets.length +
+		sirens.length +
+	resolvers.length;
 
-Object.keys(mobileMarkers).forEach(key => {
+	devices.forEach(renderDevice);
+	sirens.forEach(renderSiren);
+	visibleTickets.forEach(renderTicket);
+	resolvers.forEach(renderResolver);
 
-if (!activeTicketKeys.has(key)) {
+	if (!userMovedMap) {
+		const bounds = [];
+		visibleTickets.forEach(t => {
+				bounds.push([t.latitude, t.longitude]);  });
+				resolvers.forEach(r => {
+						bounds.push([r.latitude, r.longitude]);
+						});
 
-map.removeLayer(mobileMarkers[key]);
+mobileMarkers).forEach(key => {
 
-delete mobileMarkers[key];
-}
-});
+		if (!activeTicketKeys.has(key)) {
+
+		map.removeLayer(mobileMarkers[key]);
+
+		delete mobileMarkers[key];
+		}
+		});
 
 
-visibleTickets.forEach(renderTicket);
-resolvers.forEach(renderResolver);
 
 
 } catch (err) {
-	console.error(err);
-	document.getElementById("status").textContent = "error";
-	document.getElementById("status").className = "offline";
+console.error(err);
+document.getElementById("status").textContent = "error";
+document.getElementById("status").className = "offline";
 }
 }
 
