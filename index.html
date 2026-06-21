@@ -370,17 +370,17 @@ Dispositivos:
 </div>
 
 <div class="panel-small">
-SOS activos:
+Tickets abiertos:
 <span id="activeSosCount">0</span>
 </div>
 
 <div class="panel-small">
-SOS recientes:
+Botones recientes:
 <span id="recentSosCount">0</span>
 </div>
 
 <div class="panel-small">
-SOS móviles:
+Tickets móviles:
 <span id="mobileSosCount">0</span>
 </div>
 
@@ -1092,10 +1092,19 @@ const resolvers = data.resolvers || [];
 const visibleTickets = tickets.filter(
 		t => t.state !== "CLOSED"
 		);
-const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
-const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
+
+const activeSos = visibleTickets.filter(t =>
+  !["RESOLVED", "CLOSED", "CANCELLED"].includes(t.state)
+).length;
+
+const recentSos = devices.filter(d =>
+  d.sos_state === "RECENT"
+).length;
 
 const mobileSos = visibleTickets.length;
+
+
+
 document.getElementById("status").textContent = "conectado";
 document.getElementById("status").className = "online";
 document.getElementById("count").textContent = devices.length;
