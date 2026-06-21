@@ -251,7 +251,66 @@ font-size: 22px;
 }
 
 
+.ticket-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 420px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+
+  z-index: 1000;
+}
+
+.hidden {
+  display: none;
+}
+
+.ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.ticket-header button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.ticket-content-section {
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.timeline-item {
+  margin-bottom: 12px;
+  padding-left: 12px;
+  border-left: 3px solid #2563eb;
+}
+
+.timeline-date {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.contact-card {
+  background: #f9fafb;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 8px;
+}
 
 
 
@@ -317,11 +376,24 @@ Total nodos:
 
 <div id="map"></div>
 
+<div id="ticketPanel" class="ticket-panel hidden">
+  <div class="ticket-header">
+    <span id="ticketTitle">Ticket</span>
+
+    <button onclick="closeTicketPanel()">✖</button>
+  </div>
+
+  <div id="ticketContent">
+    Selecciona una emergencia.
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 const CONTROL_CENTER_CODE = "CC-VINA";
 const MAP_STATE_URL = `https://sos.vsti.cl/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
+const TICKET_URL = "https://sos.vsti.cl/tickets";
 const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
 const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
 const ACK_SOS_URL = "https://sos.vsti.cl/public/devices/ack-sos";
@@ -643,7 +715,13 @@ if (!mobileMarkers[ticket.id]) {
   mobileMarkers[ticket.id].setIcon(icon);
 }
 
-mobileMarkers[ticket.id].bindPopup(popup);
+
+mobileMarkers[ticket.id]
+.bindPopup(popup)
+.on("click", () => openTicketPanel(ticket.id));
+
+
+
 }
 
 
@@ -678,8 +756,115 @@ if (!resolverMarkers[resolver.id]) {
 resolverMarkers[resolver.id].bindPopup(popup);
 }
 
+function closeTicketPanel() {
+  document
+    .getElementById("ticketPanel")
+    .classList.add("hidden");
+}
 
+async function openTicketPanel(ticketId) {
 
+  try {
+
+    const res = await fetch(
+      `${TICKET_URL}/${ticketId}`
+    );
+
+    const data = await res.json();
+
+    const ticket = data.ticket;
+
+    document.getElementById(
+      "ticketTitle"
+    ).textContent = `🚨 ${ticket.title}`;
+
+    const contactsHtml =
+      data.emergency_contacts
+        .map(c => `
+          <div class="contact-card">
+            <strong>${c.name}</strong><br>
+            ${c.relationship}<br>
+            📞 ${c.phone}
+          </div>
+        `)
+        .join("");
+
+    const notesHtml =
+      data.notes
+        .map(n => `
+          <div class="timeline-item">
+            <div>${n.note}</div>
+            <div class="timeline-date">
+              ${n.author_name || "-"} ·
+              ${new Date(n.created_at).toLocaleString()}
+            </div>
+          </div>
+        `)
+        .join("");
+
+    const actionsHtml =
+      data.actions
+        .map(a => `
+          <div class="timeline-item">
+            <strong>${a.action_type}</strong><br>
+            ${a.description}
+            <div class="timeline-date">
+              ${new Date(a.created_at).toLocaleString()}
+            </div>
+          </div>
+        `)
+        .join("");
+
+    document.getElementById(
+      "ticketContent"
+    ).innerHTML = `
+      <div class="ticket-content-section">
+        <strong>Estado:</strong> ${ticket.state}<br>
+        <strong>Tipo:</strong> ${ticket.alert_type}<br>
+        <strong>Prioridad:</strong> ${ticket.priority}
+      </div>
+
+      <div class="ticket-content-section">
+        <strong>Vecino:</strong><br>
+        ${ticket.citizen_name || "-"}<br>
+        📞 ${ticket.citizen_phone || "-"}<br>
+        📍 ${ticket.declared_address || "-"}
+      </div>
+
+      <div class="ticket-content-section">
+        <strong>Resolutor:</strong><br>
+        👮 ${ticket.resolver_name || "Sin asignar"}
+      </div>
+
+      <div class="ticket-content-section">
+        <strong>Contactos de emergencia</strong>
+        ${contactsHtml || "Sin contactos"}
+      </div>
+
+      <div class="ticket-content-section">
+        <strong>Notas</strong>
+        ${notesHtml || "Sin notas"}
+      </div>
+
+      <div class="ticket-content-section">
+        <strong>Historial</strong>
+        ${actionsHtml}
+      </div>
+    `;
+
+    document
+      .getElementById("ticketPanel")
+      .classList.remove("hidden");
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert("No fue posible cargar el ticket");
+  }
+}
+
+/* kotto aqui inserto las funciones javascript  */
 
 async function loadMapState() {
 try {
@@ -693,31 +878,31 @@ const tickets = data.tickets || [];
 const resolvers = data.resolvers || [];
 
 const visibleTickets = tickets.filter(
-  t => t.state !== "CLOSED"
+t => t.state !== "CLOSED"
 );
 const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
 const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
 
 const mobileSos = visibleTickets.length;
-	document.getElementById("status").textContent = "conectado";
-	document.getElementById("status").className = "online";
-	document.getElementById("count").textContent = devices.length;
-	document.getElementById("activeSosCount").textContent = activeSos;
-	document.getElementById("recentSosCount").textContent = recentSos;
+document.getElementById("status").textContent = "conectado";
+document.getElementById("status").className = "online";
+document.getElementById("count").textContent = devices.length;
+document.getElementById("activeSosCount").textContent = activeSos;
+document.getElementById("recentSosCount").textContent = recentSos;
 
-	document.getElementById("mobileSosCount").textContent = mobileSos;
+document.getElementById("mobileSosCount").textContent = mobileSos;
 
 
-	document.getElementById("sirenCount").textContent = sirens.length;
-	document.getElementById("lastUpdate").textContent =
-		new Date().toLocaleTimeString();
-	document.getElementById("totalNodes").textContent =
+document.getElementById("sirenCount").textContent = sirens.length;
+document.getElementById("lastUpdate").textContent =
+	new Date().toLocaleTimeString();
+document.getElementById("totalNodes").textContent =
 devices.length +
 visibleTickets.length +
 sirens.length;
 
-	devices.forEach(renderDevice);
-	sirens.forEach(renderSiren);
+devices.forEach(renderDevice);
+sirens.forEach(renderSiren);
 visibleTickets.forEach(renderTicket);
 resolvers.forEach(renderResolver);
 
