@@ -211,43 +211,43 @@ background: #15803d;
 }
 
 .mobile-sos-active {
-background: #2563eb;
+background: #dc2626;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	font-size: 22px;
+font-size: 22px;
 animation: sosPulse 1s infinite;
 }
 
 .mobile-sos-ack {
 background: #ca8a04;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	font-size: 22px;
+font-size: 22px;
 }
 
 .mobile-sos-cancelled {
 background: #6b7280;
 color: white;
-       border-radius: 50%;
+border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
-	 align-items: center;
-	 justify-content: center;
+ align-items: center;
+ justify-content: center;
 border: 3px solid white;
-	font-size: 22px;
+font-size: 22px;
 }
 
 
@@ -256,14 +256,14 @@ position: absolute;
 top: 20px;
 right: 20px;
 width: 420px;
-       max-height: calc(100vh - 40px);
-       overflow-y: auto;
+max-height: calc(100vh - 40px);
+overflow-y: auto;
 
 background: white;
-	    border-radius: 16px;
-	    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
 
-	    z-index: 2000;
+    z-index: 2000;
 }
 
 
@@ -275,44 +275,44 @@ display: none;
 
 .ticket-header {
 display: flex;
-	 justify-content: space-between;
-	 align-items: center;
+ justify-content: space-between;
+ align-items: center;
 
 padding: 16px;
-	 border-bottom: 1px solid #e5e7eb;
+ border-bottom: 1px solid #e5e7eb;
 
-	 font-size: 20px;
-	 font-weight: bold;
+ font-size: 20px;
+ font-weight: bold;
 }
 
 .ticket-header button {
 border: none;
 background: none;
 cursor: pointer;
-	font-size: 20px;
+font-size: 20px;
 }
 
 .ticket-content-section {
 padding: 16px;
-	 border-bottom: 1px solid #f3f4f6;
+ border-bottom: 1px solid #f3f4f6;
 }
 
 
 .ticket-actions {
 display: flex;
-	 flex-wrap: wrap;
+ flex-wrap: wrap;
 gap: 8px;
-     margin-top: 12px;
+margin-top: 12px;
 }
 
 .ticket-actions button {
 border: none;
-	border-radius: 8px;
+border-radius: 8px;
 padding: 10px 14px;
 background: #2563eb;
 color: white;
 cursor: pointer;
-	font-size: 14px;
+font-size: 14px;
 }
 
 .ticket-actions button:hover {
@@ -322,21 +322,21 @@ background: #1d4ed8;
 
 
 .timeline-item {
-	margin-bottom: 12px;
-	padding-left: 12px;
-	border-left: 3px solid #2563eb;
+margin-bottom: 12px;
+padding-left: 12px;
+border-left: 3px solid #2563eb;
 }
 
 .timeline-date {
-	font-size: 12px;
+font-size: 12px;
 color: #6b7280;
 }
 
 .contact-card {
 background: #f9fafb;
 padding: 10px;
-	 border-radius: 10px;
-	 margin-top: 8px;
+ border-radius: 10px;
+ margin-top: 8px;
 }
 
 
@@ -430,9 +430,9 @@ const DEFAULT_CENTER = [-33.01895, -71.55090];
 const DEFAULT_ZOOM = 15;
 
 const map = L.map("map").setView(
-		DEFAULT_CENTER,
-		DEFAULT_ZOOM
-		);
+	DEFAULT_CENTER,
+	DEFAULT_ZOOM
+	);
 const ticketPanel = document.getElementById("ticketPanel");
 
 L.DomEvent.disableClickPropagation(ticketPanel);
@@ -445,12 +445,12 @@ let userMovedMap = false;
 
 
 map.on("dragstart", () => {
-		userMovedMap = true;
-		});
+	userMovedMap = true;
+	});
 
 map.on("zoomstart", () => {
-		userMovedMap = true;
-		});
+	userMovedMap = true;
+	});
 
 
 L.control.zoom({ position: "topleft" }).addTo(map);
@@ -460,15 +460,15 @@ attribution: "© OpenStreetMap"
 }).addTo(map);
 
 function getSosIcon(device) {
-	let cssClass = "sos-marker-normal";
+let cssClass = "sos-marker-normal";
 
-	if (device.sos_state === "ACTIVE") {
-		cssClass = "sos-marker-active";
-	} else if (device.sos_state === "RECENT") {
-		cssClass = "sos-marker-recent";
-	}
+if (device.sos_state === "ACTIVE") {
+	cssClass = "sos-marker-active";
+} else if (device.sos_state === "RECENT") {
+	cssClass = "sos-marker-recent";
+}
 
-	return L.divIcon({
+return L.divIcon({
 className: "",
 html: `<div class="${cssClass}">SOS</div>`,
 iconSize: [60, 60],
@@ -505,9 +505,9 @@ let selectedTicket = null;
 let currentSirens = [];
 
 async function activateSiren(sirenId) {
-	if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
+if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
 
-	const res = await fetch(SIREN_ACTIVATE_URL, {
+const res = await fetch(SIREN_ACTIVATE_URL, {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
@@ -519,14 +519,14 @@ duration_seconds: 60
 const data = await res.json();
 
 if (data.status === "ok") {
-	await loadMapState();
+await loadMapState();
 } else {
-	alert("Error activando sirena");
+alert("Error activando sirena");
 }
 }
 
 async function deactivateSiren(sirenId) {
-	const res = await fetch(SIREN_DEACTIVATE_URL, {
+const res = await fetch(SIREN_DEACTIVATE_URL, {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({ siren_id: sirenId })
@@ -535,14 +535,14 @@ body: JSON.stringify({ siren_id: sirenId })
 const data = await res.json();
 
 if (data.status === "ok") {
-	await loadMapState();
+await loadMapState();
 } else {
-	alert("Error apagando sirena");
+alert("Error apagando sirena");
 }
 }
 
 async function ackSos(deviceId) {
-	const res = await fetch(ACK_SOS_URL, {
+const res = await fetch(ACK_SOS_URL, {
 method: "POST",
 headers: {
 "Content-Type": "application/json"
@@ -555,14 +555,14 @@ device_id: deviceId
 const data = await res.json();
 
 if (data.status === "ok") {
-	await loadMapState();
+await loadMapState();
 } else {
-	alert("No fue posible reconocer el SOS");
+alert("No fue posible reconocer el SOS");
 }
 }
 
 async function ackMobileSos(eventId) {
-	const res = await fetch(ACK_MOBILE_SOS_URL, {
+const res = await fetch(ACK_MOBILE_SOS_URL, {
 method: "POST",
 headers: {
 "Content-Type": "application/json"
@@ -576,38 +576,44 @@ operator: "central-web"
 const data = await res.json();
 
 if (data.status === "ok") {
-	await loadMapState();
+await loadMapState();
 } else {
-	alert("No fue posible reconocer el SOS móvil");
+alert("No fue posible reconocer el SOS móvil");
 }
 }
+
 
 
 function getTicketIcon(ticket) {
 
-	let cssClass = "mobile-sos-active";
+let cssClass = "mobile-sos-active";
 
-	if (
-			ticket.state === "ACKNOWLEDGED" ||
-			ticket.state === "ASSIGNED"
-	   ) {
-		cssClass = "mobile-sos-ack";
-	}
+if (
+ticket.state === "ASSIGNED" ||
+ticket.state === "ACKNOWLEDGED" ||
+ticket.state === "ACCEPTED_BY_RESOLVER" ||
+ticket.state === "EN_ROUTE" ||
+ticket.state === "ON_SITE"
+) {
+cssClass = "mobile-sos-active";
+}
 
-	if (
-			ticket.state === "RESOLVED" ||
-			ticket.state === "CLOSED"
-	   ) {
-		cssClass = "mobile-sos-cancelled";
-	}
+if (
+ticket.state === "RESOLVED" ||
+ticket.state === "CLOSED" ||
+ticket.state === "CANCELLED"
+) {
+cssClass = "mobile-sos-cancelled";
+}
 
-	return L.divIcon({
+return L.divIcon({
 className: "",
 html: `<div class="${cssClass}">🚨</div>`,
 iconSize: [70, 70],
 iconAnchor: [35, 35]
 });
 }
+
 
 function getResolverIcon(resolver) {
 
