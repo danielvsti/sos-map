@@ -1075,23 +1075,52 @@ try {
 	visibleTickets.forEach(renderTicket);
 	resolvers.forEach(renderResolver);
 
-	if (!userMovedMap) {
-		const bounds = [];
-		visibleTickets.forEach(t => {
-				bounds.push([t.latitude, t.longitude]);  });
-				resolvers.forEach(r => {
-						bounds.push([r.latitude, r.longitude]);
-						});
+if (!userMovedMap) {
+  const bounds = [];
 
-mobileMarkers).forEach(key => {
+  visibleTickets.forEach(t => {
+    bounds.push([t.latitude, t.longitude]);
+  });
 
-		if (!activeTicketKeys.has(key)) {
+  resolvers.forEach(r => {
+    bounds.push([r.latitude, r.longitude]);
+  });
 
-		map.removeLayer(mobileMarkers[key]);
+  devices.forEach(d => {
+    bounds.push([d.latitude, d.longitude]);
+  });
 
-		delete mobileMarkers[key];
-		}
-		});
+  sirens.forEach(s => {
+    bounds.push([s.latitude, s.longitude]);
+  });
+
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, {
+      padding: [50, 50],
+      maxZoom: 17
+    });
+
+    mapInitialized = true;
+  } else if (!mapInitialized) {
+    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    mapInitialized = true;
+  }
+}
+
+const activeTicketKeys = new Set(
+  visibleTickets.map(t => t.id)
+);
+
+Object.keys(mobileMarkers).forEach(key => {
+  if (!activeTicketKeys.has(key)) {
+    map.removeLayer(mobileMarkers[key]);
+    delete mobileMarkers[key];
+  }
+});
+
+
+
+
 
 
 
