@@ -686,42 +686,51 @@ function renderDevice(device) {
 	deviceMarkers[device.id].bindPopup(popup);
 }
 
+
 function renderSiren(siren) {
-	const active = siren.active === true || siren.state === "ON";
-	const icon = active ? sirenActiveIcon : sirenIcon;
+  const active =
+    siren.active === true ||
+    siren.relay === true ||
+    siren.state === "ON";
 
-	const popup = `
-		<strong>${siren.name}</strong><br>
-		ID: ${siren.id}<br>
-		Estado: ${
-			active
-				? '<strong style="color:red;">ACTIVADA</strong>'
-				: '<strong>Apagada</strong>'
-		}<br>
-Ubicación: ${siren.location ?? "-"}<br>
-		   ${
-			   active
-				   ? `<button class="btn-siren btn-off" onclick="deactivateSiren('${siren.id}')">Apagar sirena</button>`
-				   : `<button class="btn-siren" onclick="activateSiren('${siren.id}')">🚨 Activar sirena 60s</button>`
-		   }
-	   `;
+  const icon = active
+    ? sirenActiveIcon
+    : sirenIcon;
 
-	   if (!sirenMarkers[siren.id]) {
-		   sirenMarkers[siren.id] = L.marker(
-				   [siren.latitude, siren.longitude],
-				   { icon }
-				   ).addTo(map);
-	   } else {
-		   sirenMarkers[siren.id].setLatLng([
-				   siren.latitude,
-				   siren.longitude
-		   ]);
+  const popup = `
+    <strong>${siren.name}</strong><br>
+    ID: ${siren.id}<br>
+    Estado: ${
+      active
+        ? '<strong style="color:red;">ACTIVADA</strong>'
+        : '<strong>Apagada</strong>'
+    }<br>
+    Ubicación: ${siren.location ?? "-"}<br>
+    ${
+      active
+        ? `<button class="btn-siren btn-off" onclick="deactivateSiren('${siren.id}')">Apagar sirena</button>`
+        : `<button class="btn-siren" onclick="activateSiren('${siren.id}')">🚨 Activar sirena 60s</button>`
+    }
+  `;
 
-		   sirenMarkers[siren.id].setIcon(icon);
-	   }
+  if (!sirenMarkers[siren.id]) {
+    sirenMarkers[siren.id] = L.marker(
+      [siren.latitude, siren.longitude],
+      { icon }
+    ).addTo(map);
+  } else {
+    sirenMarkers[siren.id].setLatLng([
+      siren.latitude,
+      siren.longitude
+    ]);
 
-	   sirenMarkers[siren.id].bindPopup(popup);
+    sirenMarkers[siren.id].setIcon(icon);
+  }
+
+  sirenMarkers[siren.id].bindPopup(popup);
 }
+
+
 
 
 function renderTicket(ticket) {
