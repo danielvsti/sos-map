@@ -49,6 +49,45 @@ margin-bottom: 10px;
 font-size: 18px;
 }
 
+.resolver-marker-available {
+background: #16a34a;
+color: white;
+border-radius: 50%;
+width: 38px;
+height: 38px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 3px solid white;
+font-size: 20px;
+}
+
+.resolver-marker-busy {
+background: #ea580c;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 3px solid white;
+font-size: 22px;
+}
+
+.resolver-marker-enroute {
+background: #2563eb;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 3px solid white;
+font-size: 22px;
+}
+
 .sos-marker-normal {
 background: #15803d;
 color: white;
@@ -57,7 +96,7 @@ width: 34px;
 height: 34px;
 display: flex;
  align-items: center;
- justify-content: center;
+justify-content: center;
 border: 3px solid white;
 box-shadow: 0 2px 8px rgba(0,0,0,.35);
 font-weight: bold;
@@ -71,8 +110,8 @@ border-radius: 50%;
 width: 38px;
 height: 38px;
 display: flex;
- align-items: center;
- justify-content: center;
+align-items: center;
+justify-content: center;
 border: 3px solid white;
 box-shadow: 0 2px 10px rgba(0,0,0,.4);
 font-weight: bold;
@@ -86,8 +125,8 @@ border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
- align-items: center;
- justify-content: center;
+align-items: center;
+justify-content: center;
 border: 3px solid white;
 font-weight: bold;
 font-size: 12px;
@@ -96,15 +135,15 @@ animation: sosPulse 1s infinite;
 
 @keyframes sosPulse {
 0% {
-	box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+box-shadow: 0 0 0 0 rgba(220,38,38,.8);
 transform: scale(1);
 }
 70% {
-	box-shadow: 0 0 0 28px rgba(220,38,38,0);
+box-shadow: 0 0 0 28px rgba(220,38,38,0);
 transform: scale(1.12);
 }
 100% {
-	box-shadow: 0 0 0 0 rgba(220,38,38,0);
+box-shadow: 0 0 0 0 rgba(220,38,38,0);
 transform: scale(1);
 }
 }
@@ -116,8 +155,8 @@ border-radius: 50%;
 width: 38px;
 height: 38px;
 display: flex;
- align-items: center;
- justify-content: center;
+align-items: center;
+justify-content: center;
 border: 3px solid white;
 box-shadow: 0 2px 8px rgba(0,0,0,.4);
 font-size: 20px;
@@ -130,8 +169,8 @@ border-radius: 50%;
 width: 42px;
 height: 42px;
 display: flex;
- align-items: center;
- justify-content: center;
+align-items: center;
+justify-content: center;
 border: 3px solid white;
 font-size: 22px;
 animation: sirenPulse 1s infinite;
@@ -139,15 +178,15 @@ animation: sirenPulse 1s infinite;
 
 @keyframes sirenPulse {
 0% {
-	box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+box-shadow: 0 0 0 0 rgba(220,38,38,.8);
 transform: scale(1);
 }
 70% {
-	box-shadow: 0 0 0 28px rgba(220,38,38,0);
+box-shadow: 0 0 0 28px rgba(220,38,38,0);
 transform: scale(1.12);
 }
 100% {
-	box-shadow: 0 0 0 0 rgba(220,38,38,0);
+box-shadow: 0 0 0 0 rgba(220,38,38,0);
 transform: scale(1);
 }
 }
@@ -158,7 +197,7 @@ background: #dc2626;
 color: white;
 border: none;
 padding: 8px 12px;
- border-radius: 8px;
+border-radius: 8px;
 cursor: pointer;
 font-weight: bold;
 }
@@ -281,7 +320,8 @@ Total nodos:
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-const MAP_STATE_URL = "https://sos.vsti.cl/public/map-state";
+const CONTROL_CENTER_CODE = "CC-VINA";
+const MAP_STATE_URL = `https://sos.vsti.cl/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
 const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
 const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
 const ACK_SOS_URL = "https://sos.vsti.cl/public/devices/ack-sos";
@@ -300,11 +340,11 @@ let userMovedMap = false;
 
 
 map.on("dragstart", () => {
-  userMovedMap = true;
+userMovedMap = true;
 });
 
 map.on("zoomstart", () => {
-  userMovedMap = true;
+userMovedMap = true;
 });
 
 
@@ -355,6 +395,7 @@ iconAnchor: [35, 35]
 const deviceMarkers = {};
 const sirenMarkers = {};
 const mobileMarkers = {};
+const resolverMarkers = {};
 
 async function activateSiren(sirenId) {
 if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
@@ -434,31 +475,53 @@ alert("No fue posible reconocer el SOS móvil");
 }
 }
 
-function getMobileIcon(event) {
+
+function getTicketIcon(ticket) {
 
 let cssClass = "mobile-sos-active";
 
 if (
-event.state === "ACKNOWLEDGED" ||
-event.state === "ACK"
+  ticket.state === "ACKNOWLEDGED" ||
+  ticket.state === "ASSIGNED"
 ) {
-cssClass = "mobile-sos-ack";
+  cssClass = "mobile-sos-ack";
 }
 
 if (
-event.state === "CANCELLED" ||
-event.state === "CLOSED"
+  ticket.state === "RESOLVED" ||
+  ticket.state === "CLOSED"
 ) {
-cssClass = "mobile-sos-cancelled";
+  cssClass = "mobile-sos-cancelled";
 }
 
 return L.divIcon({
-className: "",
-html: `<div class="${cssClass}">📱</div>`,
-iconSize: [70, 70],
-iconAnchor: [35, 35]
+  className: "",
+  html: `<div class="${cssClass}">🚨</div>`,
+  iconSize: [70, 70],
+  iconAnchor: [35, 35]
 });
 }
+
+function getResolverIcon(resolver) {
+
+let cssClass = "resolver-marker-available";
+
+if (resolver.status === "BUSY") {
+  cssClass = "resolver-marker-busy";
+}
+
+if (resolver.status === "EN_ROUTE") {
+  cssClass = "resolver-marker-enroute";
+}
+
+return L.divIcon({
+  className: "",
+  html: `<div class="${cssClass}">👮</div>`,
+  iconSize: [50, 50],
+  iconAnchor: [25, 25]
+});
+}
+
 
 function renderDevice(device) {
 const name = device.name || `Botón SOS ${device.id}`;
@@ -548,75 +611,94 @@ Ubicación: ${siren.location ?? "-"}<br>
 }
 
 
-function renderMobileEvent(event) {
 
-const markerKey = event.user_id || event.phone || event.id;
+function renderTicket(ticket) {
 
 const popup = `
-<strong>📱 ${event.name || "Usuario móvil"}</strong><br>
-ID: ${event.id}<br>
-Estado: <strong style="color:#2563eb;">${event.state}</strong><br>
-Precisión: ${event.accuracy ?? "-"} m<br>
-Batería: ${event.battery ?? "-"} %<br>
-Teléfono: ${event.phone ?? "-"}<br>
-Latitud: ${event.latitude}<br>
-Longitud: ${event.longitude}<br>
-Creado: ${event.created_at ?? "-"}<br>
-
-${
-event.state === "ACTIVE"
-? `<br>
-  <button
-    class="btn-siren btn-ack"
-    onclick="ackMobileSos('${event.id}')">
-    ✅ Marcar como atendido
-  </button>`
-: ""
-}
+<strong>🚨 ${ticket.title}</strong><br>
+Estado: <strong>${ticket.state}</strong><br>
+Tipo: ${ticket.alert_type}<br>
+Vecino: ${ticket.citizen_name ?? "-"}<br>
+Teléfono: ${ticket.citizen_phone ?? "-"}<br>
+Resolutor: ${ticket.resolver_name ?? "Sin asignar"}<br>
+Creado: ${ticket.created_at}<br>
 `;
 
-const icon = getMobileIcon(event);
+const icon = getTicketIcon(ticket);
 
-if (!mobileMarkers[markerKey]) {
+if (!mobileMarkers[ticket.id]) {
 
-mobileMarkers[markerKey] = L.marker(
-[event.latitude, event.longitude],
-{ icon }
-).addTo(map);
+  mobileMarkers[ticket.id] = L.marker(
+    [ticket.latitude, ticket.longitude],
+    { icon }
+  ).addTo(map);
 
 } else {
 
-mobileMarkers[markerKey].setLatLng([
-event.latitude,
-event.longitude
-]);
+  mobileMarkers[ticket.id].setLatLng([
+    ticket.latitude,
+    ticket.longitude
+  ]);
 
-mobileMarkers[markerKey].setIcon(icon);
+  mobileMarkers[ticket.id].setIcon(icon);
 }
 
-mobileMarkers[markerKey].bindPopup(popup);
+mobileMarkers[ticket.id].bindPopup(popup);
 }
+
+
+function renderResolver(resolver) {
+
+const popup = `
+<strong>👮 ${resolver.full_name}</strong><br>
+Estado: ${resolver.status}<br>
+Teléfono: ${resolver.phone ?? "-"}<br>
+Última actualización: ${resolver.updated_at}
+`;
+
+const icon = getResolverIcon(resolver);
+
+if (!resolverMarkers[resolver.id]) {
+
+  resolverMarkers[resolver.id] = L.marker(
+    [resolver.latitude, resolver.longitude],
+    { icon }
+  ).addTo(map);
+
+} else {
+
+  resolverMarkers[resolver.id].setLatLng([
+    resolver.latitude,
+    resolver.longitude
+  ]);
+
+  resolverMarkers[resolver.id].setIcon(icon);
+}
+
+resolverMarkers[resolver.id].bindPopup(popup);
+}
+
 
 
 
 async function loadMapState() {
 try {
-	const res = await fetch(MAP_STATE_URL);
-	const data = await res.json();
+const res = await fetch(MAP_STATE_URL);
+const data = await res.json();
 
-	const devices = data.devices || [];
-	const sirens = data.sirens || [];
-	const mobileEvents = data.mobile_events || [];
+const devices = data.devices || [];
+const sirens = data.sirens || [];
 
-const visibleMobileEvents = mobileEvents.filter(
-  e => e.state === "ACTIVE"
+const tickets = data.tickets || [];
+const resolvers = data.resolvers || [];
+
+const visibleTickets = tickets.filter(
+  t => t.state !== "CLOSED"
 );
+const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
+const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
 
-	const activeSos = devices.filter(d => d.sos_state === "ACTIVE").length;
-	const recentSos = devices.filter(d => d.sos_state === "RECENT").length;
-	
-	const mobileSos = visibleMobileEvents.length;
-
+const mobileSos = visibleTickets.length;
 	document.getElementById("status").textContent = "conectado";
 	document.getElementById("status").className = "online";
 	document.getElementById("count").textContent = devices.length;
@@ -636,49 +718,48 @@ sirens.length;
 
 	devices.forEach(renderDevice);
 	sirens.forEach(renderSiren);
-	visibleMobileEvents.forEach(renderMobileEvent);
+visibleTickets.forEach(renderTicket);
+resolvers.forEach(renderResolver);
 
 if (!userMovedMap) {
   const bounds = [];
+visibleTickets.forEach(t => {
+bounds.push([t.latitude, t.longitude]);
+resolvers.forEach(r => {
+  bounds.push([r.latitude, r.longitude]);
+});
 
-  visibleMobileEvents.forEach(m => {
-    bounds.push([m.latitude, m.longitude]);
-  });
+});
 
   devices.forEach(d => {
-    bounds.push([d.latitude, d.longitude]);
-  });
+bounds.push([d.latitude, d.longitude]);
+});
 
-  sirens.forEach(s => {
-    bounds.push([s.latitude, s.longitude]);
-  });
+sirens.forEach(s => {
+bounds.push([s.latitude, s.longitude]);
+});
 
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, {
-      padding: [50, 50],
-      maxZoom: 17
-    });
+if (bounds.length > 0) {
+map.fitBounds(bounds, {
+padding: [50, 50],
+maxZoom: 17
+});
 
-    mapInitialized = true;
-  } else if (!mapInitialized) {
-    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-    mapInitialized = true;
-  }
+mapInitialized = true;
+} else if (!mapInitialized) {
+map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+mapInitialized = true;
+}
 }
 
 
-
-
-const activeMobileKeys = new Set(
-  visibleMobileEvents.map(
-    e => e.user_id || e.phone || e.id
-  )
+const activeTicketKeys = new Set(
+  visibleTickets.map(t => t.id)
 );
-
 
 Object.keys(mobileMarkers).forEach(key => {
 
-if (!activeMobileKeys.has(key)) {
+if (!activeTicketKeys.has(key)) {
 
 map.removeLayer(mobileMarkers[key]);
 
@@ -687,7 +768,10 @@ delete mobileMarkers[key];
 });
 
 
-visibleMobileEvents.forEach(renderMobileEvent);
+visibleTickets.forEach(renderTicket);
+resolvers.forEach(renderResolver);
+
+
 } catch (err) {
 	console.error(err);
 	document.getElementById("status").textContent = "error";
