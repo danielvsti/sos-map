@@ -716,64 +716,32 @@ Ubicación: ${siren.location ?? "-"}<br>
 }
 
 
-
 function renderTicket(ticket) {
 
-	const popup = `
-		<strong>🚨 ${ticket.title}</strong><br>
-		Estado: <strong>${ticket.state}</strong><br>
-		Tipo: ${ticket.alert_type}<br>
-		Vecino: ${ticket.citizen_name ?? "-"}<br>
-		Teléfono: ${ticket.citizen_phone ?? "-"}<br>
-		Resolutor: ${ticket.resolver_name ?? "Sin asignar"}<br>
-		Creado: ${ticket.created_at}<br>
-		`;
+  const icon = getTicketIcon(ticket);
 
-	const icon = getTicketIcon(ticket);
+  if (!mobileMarkers[ticket.id]) {
 
-	if (!mobileMarkers[ticket.id]) {
+    mobileMarkers[ticket.id] = L.marker(
+      [ticket.latitude, ticket.longitude],
+      { icon }
+    ).addTo(map);
 
-		mobileMarkers[ticket.id] = L.marker(
-				[ticket.latitude, ticket.longitude],
-				{ icon }
-				).addTo(map);
+    mobileMarkers[ticket.id].on(
+      "click",
+      () => openTicketPanel(ticket.id)
+    );
 
-	} else {
+  } else {
 
-		mobileMarkers[ticket.id].setLatLng([
-				ticket.latitude,
-				ticket.longitude
-		]);
+    mobileMarkers[ticket.id].setLatLng([
+      ticket.latitude,
+      ticket.longitude
+    ]);
 
-		mobileMarkers[ticket.id].setIcon(icon);
-	}
-
-if (!mobileMarkers[ticket.id]) {
-
-  mobileMarkers[ticket.id] = L.marker(
-    [ticket.latitude, ticket.longitude],
-    { icon }
-  ).addTo(map);
-
-  mobileMarkers[ticket.id].on(
-    "click",
-    () => openTicketPanel(ticket.id)
-  );
-
-} else {
-
-  mobileMarkers[ticket.id].setLatLng([
-    ticket.latitude,
-    ticket.longitude
-  ]);
-
-  mobileMarkers[ticket.id].setIcon(icon);
+    mobileMarkers[ticket.id].setIcon(icon);
+  }
 }
-
-
-
-}
-
 
 function renderResolver(resolver) {
 
