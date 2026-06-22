@@ -149,7 +149,7 @@ transform: scale(1);
 }
 
 .siren-marker {
-background: #991b1b;
+background: #334155;
 color: white;
        border-radius: 50%;
 width: 38px;
@@ -478,14 +478,14 @@ iconAnchor: [30, 30]
 
 const sirenIcon = L.divIcon({
 className: "",
-html: `<div class="siren-marker">🚨</div>`,
+html: `<div class="siren-marker">📢</div>`,
 iconSize: [44, 44],
 iconAnchor: [22, 22]
 });
 
 const sirenActiveIcon = L.divIcon({
 className: "",
-html: `<div class="siren-marker-active">🚨</div>`,
+html: `<div class="siren-marker-active">📢</div>`,
 iconSize: [70, 70],
 iconAnchor: [35, 35]
 });
@@ -608,7 +608,7 @@ cssClass = "mobile-sos-cancelled";
 
 return L.divIcon({
 className: "",
-html: `<div class="${cssClass}">🚨</div>`,
+html: `<div class="${cssClass}">📱</div>`,
 iconSize: [70, 70],
 iconAnchor: [35, 35]
 });
