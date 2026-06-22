@@ -339,7 +339,72 @@ padding: 10px;
  margin-top: 8px;
 }
 
+.ticket-active,
+.ticket-assigned,
+.ticket-acknowledged,
+.ticket-default {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 4px solid white;
 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 24px;
+  box-shadow: 0 0 12px rgba(0,0,0,.35);
+}
+
+.ticket-active {
+  background: #dc2626;
+  animation: pulse-fast 1s infinite;
+}
+
+.ticket-assigned {
+  background: #f97316;
+  animation: pulse-slow 2s infinite;
+}
+
+.ticket-acknowledged {
+  background: #eab308;
+}
+
+.ticket-default {
+  background: #64748b;
+}
+
+@keyframes pulse-fast {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220,38,38,.7);
+  }
+
+  70% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 22px rgba(220,38,38,0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-slow {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(249,115,22,.6);
+  }
+
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 16px rgba(249,115,22,0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
 
 
 </style>
@@ -582,36 +647,31 @@ alert("No fue posible reconocer el SOS móvil");
 }
 }
 
+function getTicketClass(ticket) {
+  switch (ticket.state) {
+    case "ACTIVE":
+      return "ticket-active";
 
+    case "ASSIGNED":
+      return "ticket-assigned";
+
+    case "ACKNOWLEDGED":
+      return "ticket-acknowledged";
+
+    default:
+      return "ticket-default";
+  }
+}
 
 function getTicketIcon(ticket) {
+  const cssClass = getTicketClass(ticket);
 
-let cssClass = "mobile-sos-active";
-
-if (
-ticket.state === "ASSIGNED" ||
-ticket.state === "ACKNOWLEDGED" ||
-ticket.state === "ACCEPTED_BY_RESOLVER" ||
-ticket.state === "EN_ROUTE" ||
-ticket.state === "ON_SITE"
-) {
-cssClass = "mobile-sos-active";
-}
-
-if (
-ticket.state === "RESOLVED" ||
-ticket.state === "CLOSED" ||
-ticket.state === "CANCELLED"
-) {
-cssClass = "mobile-sos-cancelled";
-}
-
-return L.divIcon({
-className: "",
-html: `<div class="${cssClass}">📱</div>`,
-iconSize: [70, 70],
-iconAnchor: [35, 35]
-});
+  return L.divIcon({
+    className: "",
+    html: `<div class="${cssClass}">📱</div>`,
+    iconSize: [52, 52],
+    iconAnchor: [26, 26]
+  });
 }
 
 
@@ -1098,9 +1158,11 @@ const sirens = data.sirens || [];
 const tickets = data.tickets || [];
 const resolvers = data.resolvers || [];
 
+
 const visibleTickets = tickets.filter(
-		t => t.state !== "CLOSED"
-		);
+  t => !["CLOSED", "CANCELLED", "RESOLVED"].includes(t.state)
+);
+
 
 const activeSos = visibleTickets.filter(t =>
   !["RESOLVED", "CLOSED", "CANCELLED"].includes(t.state)
