@@ -485,7 +485,6 @@ Selecciona una emergencia.
 <script>
 const CONTROL_CENTER_CODE = "CC-VINA";
 const MAP_STATE_URL = `https://sos.vsti.cl/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
-const PUBLIC_MAP_STATE_URL = "https://sos.vsti.cl/public/map-state";
 const TICKET_URL = "https://sos.vsti.cl/tickets";
 const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
 const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
@@ -566,10 +565,8 @@ iconAnchor: [35, 35]
 const deviceMarkers = {};
 const sirenMarkers = {};
 const mobileMarkers = {};
-const mobileEventMarkers = {};
 const resolverMarkers = {};
 let selectedTicket = null;
-let selectedMobileEvent = null;
 let currentSirens = [];
 
 async function activateSiren(sirenId) {
@@ -821,60 +818,6 @@ ticket.longitude
 
 mobileMarkers[ticket.id].setIcon(icon);
 }
-}
-
-
-function getMobileEventIcon(event) {
-  const cssClass = event.state === "ACKNOWLEDGED"
-    ? "mobile-sos-ack"
-    : "mobile-sos-active";
-
-  return L.divIcon({
-    className: "",
-    html: `<div class="${cssClass}">📱</div>`,
-    iconSize: [52, 52],
-    iconAnchor: [26, 26]
-  });
-}
-
-function renderMobileEvent(event) {
-  const icon = getMobileEventIcon(event);
-  const key = event.id;
-
-  const stateText = event.state === "ACKNOWLEDGED"
-    ? '<span style="color:#ca8a04;font-weight:bold;">ACKNOWLEDGED</span>'
-    : '<span style="color:#dc2626;font-weight:bold;">ACTIVE</span>';
-
-  const popup = `
-    <strong>📱 Alerta móvil</strong><br>
-    Evento: ${event.id}<br>
-    Usuario: ${event.name || "Usuario móvil"}<br>
-    Estado: ${stateText}<br>
-    Precisión: ${event.accuracy ?? "-"} m<br>
-    Creada: ${event.created_at ?? "-"}<br>
-    Latitud: ${event.latitude}<br>
-    Longitud: ${event.longitude}<br>
-    ${event.state === "ACTIVE"
-      ? `<br><button class="btn-siren btn-ack" onclick="ackMobileSos('${event.id}')">✅ Reconocer alerta móvil</button>`
-      : ""
-    }
-  `;
-
-  if (!mobileEventMarkers[key]) {
-    mobileEventMarkers[key] = L.marker(
-      [event.latitude, event.longitude],
-      { icon }
-    ).addTo(map);
-  } else {
-    mobileEventMarkers[key].setLatLng([
-      event.latitude,
-      event.longitude
-    ]);
-
-    mobileEventMarkers[key].setIcon(icon);
-  }
-
-  mobileEventMarkers[key].bindPopup(popup);
 }
 
 function renderResolver(resolver) {
@@ -1206,29 +1149,14 @@ alert("No fue posible cargar el ticket");
 
 async function loadMapState() {
 try {
-const [dashboardRes, publicRes] = await Promise.all([
-fetch(MAP_STATE_URL),
-fetch(PUBLIC_MAP_STATE_URL)
-]);
-
-const data = await dashboardRes.json();
-const publicData = await publicRes.json();
+const res = await fetch(MAP_STATE_URL);
+const data = await res.json();
 
 const devices = data.devices || [];
 const sirens = data.sirens || [];
       currentSirens = sirens;
 const tickets = data.tickets || [];
 const resolvers = data.resolvers || [];
-const publicMobileEvents = publicData.mobile_events || [];
-const ticketSourceIds = new Set(
-  tickets
-    .map(t => t.source_event_id)
-    .filter(Boolean)
-);
-
-const orphanMobileEvents = publicMobileEvents.filter(
-  event => !ticketSourceIds.has(event.id)
-);
 
 
 const visibleTickets = tickets.filter(
@@ -1244,11 +1172,7 @@ const recentSos = devices.filter(d =>
   d.sos_state === "RECENT"
 ).length;
 
-const mobileTicketCount = visibleTickets.filter(
-  t => t.source_type === "MOBILE_APP"
-).length;
-
-const mobileSos = mobileTicketCount + orphanMobileEvents.length;
+const mobileSos = visibleTickets.length;
 
 
 
@@ -1267,14 +1191,12 @@ document.getElementById("lastUpdate").textContent =
 document.getElementById("totalNodes").textContent =
 	devices.length +
 	visibleTickets.length +
-	orphanMobileEvents.length +
 	sirens.length +
 resolvers.length;
 
 devices.forEach(renderDevice);
 sirens.forEach(renderSiren);
 visibleTickets.forEach(renderTicket);
-orphanMobileEvents.forEach(renderMobileEvent);
 resolvers.forEach(renderResolver);
 
 if (!userMovedMap) {
@@ -1282,10 +1204,6 @@ const bounds = [];
 
 visibleTickets.forEach(t => {
 bounds.push([t.latitude, t.longitude]);
-});
-
-orphanMobileEvents.forEach(event => {
-bounds.push([event.latitude, event.longitude]);
 });
 
 resolvers.forEach(r => {
@@ -1321,17 +1239,6 @@ Object.keys(mobileMarkers).forEach(key => {
 if (!activeTicketKeys.has(key)) {
 map.removeLayer(mobileMarkers[key]);
 delete mobileMarkers[key];
-}
-});
-
-const activeMobileEventKeys = new Set(
-orphanMobileEvents.map(event => event.id)
-);
-
-Object.keys(mobileEventMarkers).forEach(key => {
-if (!activeMobileEventKeys.has(key)) {
-map.removeLayer(mobileEventMarkers[key]);
-delete mobileEventMarkers[key];
 }
 });
 
