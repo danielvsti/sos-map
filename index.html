@@ -504,6 +504,22 @@ const ticketPanel = document.getElementById("ticketPanel");
 L.DomEvent.disableClickPropagation(ticketPanel);
 L.DomEvent.disableScrollPropagation(ticketPanel);
 
+/*
+  Capas Leaflet: los tickets / alertas móviles deben quedar siempre arriba.
+  Esto evita que el ícono 📱 quede tapado por botones GPS, sirenas o resolutores
+  cuando comparten la misma ubicación o están muy cerca.
+*/
+map.createPane("devicesPane");
+map.getPane("devicesPane").style.zIndex = 600;
+
+map.createPane("sirensPane");
+map.getPane("sirensPane").style.zIndex = 650;
+
+map.createPane("resolversPane");
+map.getPane("resolversPane").style.zIndex = 700;
+
+map.createPane("ticketsPane");
+map.getPane("ticketsPane").style.zIndex = 900;
 
 
 let mapInitialized = false;
@@ -735,7 +751,7 @@ function renderDevice(device) {
 	if (!deviceMarkers[device.id]) {
 		deviceMarkers[device.id] = L.marker(
 				[device.latitude, device.longitude],
-				{ icon }
+				{ icon, pane: "devicesPane", zIndexOffset: 0 }
 				).addTo(map);
 	} else {
 		deviceMarkers[device.id].setLatLng([
@@ -779,7 +795,7 @@ function renderSiren(siren) {
   if (!sirenMarkers[siren.id]) {
     sirenMarkers[siren.id] = L.marker(
       [siren.latitude, siren.longitude],
-      { icon }
+      { icon, pane: "sirensPane", zIndexOffset: 1000 }
     ).addTo(map);
   } else {
     sirenMarkers[siren.id].setLatLng([
@@ -788,39 +804,110 @@ function renderSiren(siren) {
     ]);
 
     sirenMarkers[siren.id].setIcon(icon);
+    sirenMarkers[siren.id].setZIndexOffset(1000);
   }
 
   sirenMarkers[siren.id].bindPopup(popup);
 }
 
 
+function isValidCoordinate(lat, lng) {
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+}
+
+function coordKey(lat, lng) {
+  // 5 decimales agrupa puntos separados por aprox. 1 metro.
+  return `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
+}
+
+function offsetLatLng(lat, lng, index, radiusMeters = 18) {
+  // Desplaza visualmente marcadores traslapados en una pequeña circunferencia.
+  // No cambia la ubicación real; solo evita que un marcador tape a otro.
+  const angle = (index * 55) * Math.PI / 180;
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+
+  const dLat = (radiusMeters * Math.cos(angle)) / 111320;
+  const dLng = (radiusMeters * Math.sin(angle)) /
+    (111320 * Math.cos(latNum * Math.PI / 180));
+
+  return [latNum + dLat, lngNum + dLng];
+}
+
+function applyVisualOffsets(devices, sirens, resolvers, tickets, mobileEvents) {
+  const occupied = new Map();
+
+  function register(lat, lng) {
+    if (!isValidCoordinate(lat, lng)) return;
+    const key = coordKey(lat, lng);
+    occupied.set(key, (occupied.get(key) || 0) + 1);
+  }
+
+  // Primero registramos puntos base que podrían tapar al ticket móvil.
+  devices.forEach(d => register(d.latitude, d.longitude));
+  sirens.forEach(s => register(s.latitude, s.longitude));
+  resolvers.forEach(r => register(r.latitude, r.longitude));
+
+  function assignVisualPoint(item) {
+    if (!isValidCoordinate(item.latitude, item.longitude)) return;
+
+    const key = coordKey(item.latitude, item.longitude);
+    const index = occupied.get(key) || 0;
+
+    item._visualLatLng = index === 0
+      ? [Number(item.latitude), Number(item.longitude)]
+      : offsetLatLng(item.latitude, item.longitude, index);
+
+    occupied.set(key, index + 1);
+  }
+
+  tickets.forEach(assignVisualPoint);
+  mobileEvents.forEach(assignVisualPoint);
+}
+
+function getVisualLatLng(item) {
+  return item._visualLatLng || [Number(item.latitude), Number(item.longitude)];
+}
 
 
 function renderTicket(ticket) {
 
+  if (!isValidCoordinate(ticket.latitude, ticket.longitude)) return;
+
   const icon = getTicketIcon(ticket);
+  const latLng = getVisualLatLng(ticket);
+
+  const tooltip = `${ticket.state || "TICKET"} · ${ticket.title || "SOS móvil"}`;
 
   if (!mobileMarkers[ticket.id]) {
 
     mobileMarkers[ticket.id] = L.marker(
-      [ticket.latitude, ticket.longitude],
-      { icon }
+      latLng,
+      {
+        icon,
+        pane: "ticketsPane",
+        zIndexOffset: 10000,
+        riseOnHover: true
+      }
     ).addTo(map);
 
     mobileMarkers[ticket.id].on(
       "click",
-() => openTicketPanel(ticket.id)
-);
+      () => openTicketPanel(ticket.id)
+    );
 
-} else {
+  } else {
 
-mobileMarkers[ticket.id].setLatLng([
-ticket.latitude,
-ticket.longitude
-]);
+    mobileMarkers[ticket.id].setLatLng(latLng);
+    mobileMarkers[ticket.id].setIcon(icon);
+    mobileMarkers[ticket.id].setZIndexOffset(10000);
+  }
 
-mobileMarkers[ticket.id].setIcon(icon);
-}
+  mobileMarkers[ticket.id].bindTooltip(tooltip, {
+    direction: "top",
+    offset: [0, -28],
+    opacity: 0.95
+  });
 }
 
 
@@ -838,22 +925,26 @@ function getMobileEventIcon(event) {
 }
 
 function renderMobileEvent(event) {
+  if (!isValidCoordinate(event.latitude, event.longitude)) return;
+
   const icon = getMobileEventIcon(event);
   const key = event.id;
+  const latLng = getVisualLatLng(event);
 
   const stateText = event.state === "ACKNOWLEDGED"
     ? '<span style="color:#ca8a04;font-weight:bold;">ACKNOWLEDGED</span>'
     : '<span style="color:#dc2626;font-weight:bold;">ACTIVE</span>';
 
   const popup = `
-    <strong>📱 Alerta móvil</strong><br>
+    <strong>📱 Alerta móvil sin ticket</strong><br>
     Evento: ${event.id}<br>
     Usuario: ${event.name || "Usuario móvil"}<br>
     Estado: ${stateText}<br>
     Precisión: ${event.accuracy ?? "-"} m<br>
     Creada: ${event.created_at ?? "-"}<br>
-    Latitud: ${event.latitude}<br>
-    Longitud: ${event.longitude}<br>
+    Latitud real: ${event.latitude}<br>
+    Longitud real: ${event.longitude}<br>
+    ${event._visualLatLng ? "<small>Marcador desplazado visualmente para evitar traslape.</small><br>" : ""}
     ${event.state === "ACTIVE"
       ? `<br><button class="btn-siren btn-ack" onclick="ackMobileSos('${event.id}')">✅ Reconocer alerta móvil</button>`
       : ""
@@ -862,20 +953,28 @@ function renderMobileEvent(event) {
 
   if (!mobileEventMarkers[key]) {
     mobileEventMarkers[key] = L.marker(
-      [event.latitude, event.longitude],
-      { icon }
+      latLng,
+      {
+        icon,
+        pane: "ticketsPane",
+        zIndexOffset: 11000,
+        riseOnHover: true
+      }
     ).addTo(map);
   } else {
-    mobileEventMarkers[key].setLatLng([
-      event.latitude,
-      event.longitude
-    ]);
-
+    mobileEventMarkers[key].setLatLng(latLng);
     mobileEventMarkers[key].setIcon(icon);
+    mobileEventMarkers[key].setZIndexOffset(11000);
   }
 
   mobileEventMarkers[key].bindPopup(popup);
+  mobileEventMarkers[key].bindTooltip(`📱 ${event.state || "MOBILE SOS"}`, {
+    direction: "top",
+    offset: [0, -28],
+    opacity: 0.95
+  });
 }
+
 
 function renderResolver(resolver) {
 
@@ -892,7 +991,7 @@ if (!resolverMarkers[resolver.id]) {
 
 	resolverMarkers[resolver.id] = L.marker(
 			[resolver.latitude, resolver.longitude],
-			{ icon }
+			{ icon, pane: "resolversPane", zIndexOffset: 3000 }
 			).addTo(map);
 
 } else {
@@ -903,6 +1002,7 @@ if (!resolverMarkers[resolver.id]) {
 	]);
 
 	resolverMarkers[resolver.id].setIcon(icon);
+	resolverMarkers[resolver.id].setZIndexOffset(3000);
 }
 
 resolverMarkers[resolver.id].bindPopup(popup);
@@ -1235,6 +1335,9 @@ const visibleTickets = tickets.filter(
   t => !["CLOSED", "CANCELLED", "RESOLVED"].includes(t.state)
 );
 
+// Antitraslape visual: tickets y alertas móviles siempre visibles arriba.
+applyVisualOffsets(devices, sirens, resolvers, visibleTickets, orphanMobileEvents);
+
 
 const activeSos = visibleTickets.filter(t =>
   !["RESOLVED", "CLOSED", "CANCELLED"].includes(t.state)
@@ -1281,11 +1384,13 @@ if (!userMovedMap) {
 const bounds = [];
 
 visibleTickets.forEach(t => {
-bounds.push([t.latitude, t.longitude]);
+const latLng = getVisualLatLng(t);
+bounds.push(latLng);
 });
 
 orphanMobileEvents.forEach(event => {
-bounds.push([event.latitude, event.longitude]);
+const latLng = getVisualLatLng(event);
+bounds.push(latLng);
 });
 
 resolvers.forEach(r => {
