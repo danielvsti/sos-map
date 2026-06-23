@@ -556,18 +556,6 @@ Selecciona una emergencia.
 </div>
 </div>
 
-<div id="centralCallPanel" class="call-panel hidden">
-<div class="call-header">
-<span id="centralCallTitle">Comunicación con vecino</span>
-<button onclick="closeCentralCall(event)">✖</button>
-</div>
-<iframe
-  id="centralCallFrame"
-  title="Comunicación con vecino"
-  allow="camera; microphone; fullscreen; display-capture; autoplay"
-  referrerpolicy="no-referrer-when-downgrade">
-</iframe>
-</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
@@ -1263,44 +1251,30 @@ function meetingUrlForTicket(ticketId, mode = "video") {
   return `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithVideoMuted=${startWithVideoMuted}&config.startWithAudioMuted=false`;
 }
 
-async function openCentralCall(mode) {
+async function registerOperatorCall(mode) {
   if (!selectedTicket) {
     alert("No hay ticket seleccionado");
     return;
   }
 
   try {
-    await fetch(`${TICKET_URL}/${selectedTicket.id}/call-start`, {
+    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/call-start`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode,
         sender_role: "OPERATOR",
         sender_name: "Central SOS"
       })
     });
+
+    if (!res.ok) throw new Error("Error HTTP " + res.status);
+    await loadMapState();
+    alert(mode === "voice" ? "Solicitud/gestión de llamada registrada" : "Solicitud/gestión de videollamada registrada");
   } catch (error) {
-    console.warn("No se pudo registrar inicio de llamada", error);
+    console.error(error);
+    alert("No se pudo registrar la gestión de llamada");
   }
-
-  const title = mode === "voice" ? "Llamada de voz" : "Videollamada";
-  document.getElementById("centralCallTitle").textContent =
-    `${title} · ${shortTicketId(selectedTicket.id)}`;
-  document.getElementById("centralCallFrame").src =
-    meetingUrlForTicket(selectedTicket.id, mode);
-  document.getElementById("centralCallPanel").classList.remove("hidden");
-}
-
-function closeCentralCall(event) {
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
-  }
-
-  document.getElementById("centralCallFrame").src = "about:blank";
-  document.getElementById("centralCallPanel").classList.add("hidden");
 }
 
 function renderCommunications(actions) {
@@ -1349,7 +1323,7 @@ function renderCommunications(actions) {
     const mode = action.action_type === "CALL_VOICE" ? "voz" : "video";
     return `
       <div class="comm-card">
-        <strong>${action.action_type === "CALL_VOICE" ? "📞" : "🎥"} Llamada ${mode}</strong><br>
+        <strong>${action.action_type === "CALL_VOICE" ? "📞" : "🎥"} Solicitud de ${mode}</strong><br>
         ${action.description || "Comunicación iniciada"}
         <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
       </div>
@@ -1530,12 +1504,12 @@ ${ticket.citizen_name || "-"}<br>
 	🚨 Activar sirena
 	</button>
 
-<button onclick="openCentralCall('voice')">
-📞 Llamada voz
+<button onclick="registerOperatorCall('voice')">
+📞 Registrar llamada
 </button>
 
-<button onclick="openCentralCall('video')">
-🎥 Videollamada
+<button onclick="registerOperatorCall('video')">
+🎥 Registrar videollamada
 </button>
 
 	</div>
