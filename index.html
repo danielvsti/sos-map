@@ -1132,7 +1132,14 @@ return "#ea580c";
 return "#dc2626";
 }
 
-
+async function copyTicketId(ticketId) {
+  try {
+    await navigator.clipboard.writeText(ticketId);
+    alert("Ticket copiado");
+  } catch (error) {
+    alert("No fue posible copiar el ticket");
+  }
+}
 
 async function openTicketPanel(ticketId) {
 
@@ -1145,7 +1152,20 @@ const res = await fetch(
 const data = await res.json();
 
 const ticket = data.ticket;
- selectedTicket = ticket;	
+ selectedTicket = ticket;
+
+
+const shortTicketId =
+  String(ticket.id).slice(0, 8).toUpperCase();
+
+const sourceEventId =
+  ticket.source_event_id || "-";
+
+
+
+
+
+	
 const now = Date.now();
 
 const createdAt = new Date(ticket.created_at).getTime();
@@ -1175,13 +1195,19 @@ const elapsedMinutes = totalElapsed / 60000;
 const slaColor = getSlaColor(elapsedMinutes);
 
 
-
-
-
-
 document.getElementById(
-		"ticketTitle"
-		).textContent = `🚨 ${ticket.title}`;
+  "ticketTitle"
+).innerHTML = `
+  <div>
+    <div>🚨 ${ticket.title}</div>
+    <div style="font-size:14px;color:#6b7280;font-weight:normal;">
+      Ticket #${shortTicketId}
+    </div>
+  </div>
+`;
+
+
+
 
 const contactsHtml =
 	data.emergency_contacts
@@ -1222,9 +1248,33 @@ const actionsHtml =
 
 
 document.getElementById(
-		"ticketContent"
-	).innerHTML = `
+	"ticketContent"
+).innerHTML = `
 <div class="ticket-content-section">
+
+<div class="ticket-content-section" style="background:#f9fafb;">
+  <strong>Ticket:</strong> #${shortTicketId}<br>
+  <strong>ID completo:</strong><br>
+  <span style="font-size:12px;color:#6b7280;word-break:break-all;">
+    ${ticket.id}
+  </span><br><br>
+
+  <strong>Estado:</strong> ${ticket.state}<br>
+  <strong>Origen:</strong> ${ticket.source_type || "-"}<br>
+  <strong>Evento origen:</strong><br>
+  <span style="font-size:12px;color:#6b7280;word-break:break-all;">
+    ${sourceEventId}
+  </span>
+
+  <br><br>
+
+  <button
+    onclick="copyTicketId('${ticket.id}')"
+    style="border:none;border-radius:8px;padding:8px 12px;background:#374151;color:white;cursor:pointer;"
+  >
+    📋 Copiar ticket
+  </button>
+</div>
 
 <strong>SLA</strong><br><br>
 
