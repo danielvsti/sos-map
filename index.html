@@ -1098,14 +1098,6 @@ document
 }
 
 
-function callCitizen() {
-alert("Próximamente: llamada al vecino");
-}
-
-function callEmergencyContact() {
-alert("Próximamente: llamada al contacto de emergencia");
-}
-
 
 function distanceMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -1240,17 +1232,6 @@ function getActionMetadata(action) {
   }
 }
 
-function meetingRoomForTicket(ticketId) {
-  return `VSTI-SOS-${String(ticketId).replace(/[^a-zA-Z0-9]/g, "").slice(0, 32)}`;
-}
-
-function meetingUrlForTicket(ticketId, mode = "video") {
-  const room = meetingRoomForTicket(ticketId);
-  const startWithVideoMuted = mode === "voice" ? "true" : "false";
-
-  return `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithVideoMuted=${startWithVideoMuted}&config.startWithAudioMuted=false`;
-}
-
 async function registerOperatorCall(mode) {
   if (!selectedTicket) {
     alert("No hay ticket seleccionado");
@@ -1269,8 +1250,8 @@ async function registerOperatorCall(mode) {
     });
 
     if (!res.ok) throw new Error("Error HTTP " + res.status);
-    await loadMapState();
-    alert(mode === "voice" ? "Solicitud/gestión de llamada registrada" : "Solicitud/gestión de videollamada registrada");
+    await openTicketPanel(selectedTicket.id);
+    alert(mode === "voice" ? "Solicitud de llamada enviada al vecino" : "Solicitud de videollamada enviada al vecino");
   } catch (error) {
     console.error(error);
     alert("No se pudo registrar la gestión de llamada");
@@ -1279,7 +1260,7 @@ async function registerOperatorCall(mode) {
 
 function renderCommunications(actions) {
   const communicationActions = (actions || []).filter(a =>
-    ["MESSAGE_TEXT", "MEDIA_AUDIO", "MEDIA_VIDEO", "CALL_VOICE", "CALL_VIDEO"].includes(a.action_type)
+    ["MESSAGE_TEXT", "MEDIA_AUDIO", "MEDIA_VIDEO", "CALL_VOICE", "CALL_VIDEO", "CALL_ACCEPTED", "CALL_REJECTED"].includes(a.action_type)
   );
 
   if (communicationActions.length === 0) {
@@ -1320,11 +1301,23 @@ function renderCommunications(actions) {
       `;
     }
 
+    if (action.action_type === "CALL_ACCEPTED" || action.action_type === "CALL_REJECTED") {
+      const accepted = action.action_type === "CALL_ACCEPTED";
+      return `
+        <div class="comm-card">
+          <strong>${accepted ? "✅" : "❌"} ${accepted ? "Comunicación aceptada" : "Comunicación rechazada"}</strong><br>
+          ${action.description || "Respuesta del vecino"}
+          <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
+        </div>
+      `;
+    }
+
     const mode = action.action_type === "CALL_VOICE" ? "voz" : "video";
+    const fromCentral = action.actor_role === "OPERATOR" || meta.direction === "central_to_neighbor";
     return `
       <div class="comm-card">
-        <strong>${action.action_type === "CALL_VOICE" ? "📞" : "🎥"} Solicitud de ${mode}</strong><br>
-        ${action.description || "Comunicación iniciada"}
+        <strong>${action.action_type === "CALL_VOICE" ? "📞" : "🎥"} ${fromCentral ? "Solicitud enviada al vecino" : "Solicitud recibida desde vecino"}</strong><br>
+        ${action.description || "Solicitud de comunicación"}
         <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
       </div>
     `;
@@ -1492,24 +1485,16 @@ ${ticket.citizen_name || "-"}<br>
 
 <div class="ticket-actions">
 
-<button onclick="callCitizen()">
-📞 Llamar vecino
-</button>
-
-<button onclick="callEmergencyContact()">
-🚨 Contacto emergencia
-</button>
-
 <button onclick="activateNearestSiren()">
-	🚨 Activar sirena
-	</button>
+  🚨 Activar sirena
+</button>
 
 <button onclick="registerOperatorCall('voice')">
-📞 Registrar llamada
+  📞 Solicitar llamada voz
 </button>
 
 <button onclick="registerOperatorCall('video')">
-🎥 Registrar videollamada
+  🎥 Solicitar videollamada
 </button>
 
 	</div>
