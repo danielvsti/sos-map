@@ -1232,6 +1232,25 @@ function getActionMetadata(action) {
   }
 }
 
+function getTicketCreatedMetadata(actions) {
+  const created = (actions || []).find(a => a.action_type === "TICKET_CREATED");
+  return getActionMetadata(created);
+}
+
+function cleanPhoneForTel(phone) {
+  return String(phone || "").replace(/[^+0-9]/g, "");
+}
+
+function callDirectPhone(phone) {
+  const clean = cleanPhoneForTel(phone);
+  if (!clean) {
+    alert("Este botón físico no tiene teléfono registrado");
+    return;
+  }
+
+  window.location.href = `tel:${clean}`;
+}
+
 async function registerOperatorCall(mode) {
   if (!selectedTicket) {
     alert("No hay ticket seleccionado");
@@ -1373,6 +1392,79 @@ const shortId = shortTicketId(ticket.id);
 const sourceEventId = ticket.source_event_id || "-";
 
 const communicationHtml = renderCommunications(data.actions);
+const ticketMeta = getTicketCreatedMetadata(data.actions);
+const isPhysicalDevice = ticket.source_type === "GPS_DEVICE";
+const physicalDeviceName = ticketMeta.device_name || ticketMeta.name || ticket.title || "Botón SOS físico";
+const physicalDeviceId = ticketMeta.platform_id || ticketMeta.device_id || ticketMeta.ident || ticket.source_event_id || "-";
+const physicalDeviceIdent = ticketMeta.ident || "-";
+const physicalDevicePhone = ticketMeta.device_phone || ticketMeta.phone || "";
+const physicalDeviceAddress = ticketMeta.registered_address || ticket.description || "-";
+const physicalPhoneClean = cleanPhoneForTel(physicalDevicePhone);
+
+const physicalDeviceHtml = isPhysicalDevice
+  ? `
+<div class="ticket-content-section" style="background:#fff7ed;">
+  <strong>Botón físico SOS:</strong><br>
+  ${physicalDeviceName}<br>
+  <strong>ID:</strong> ${physicalDeviceId}<br>
+  <strong>Ident:</strong> ${physicalDeviceIdent}<br>
+  📞 ${physicalDevicePhone || "Sin teléfono registrado"}<br>
+  📍 ${physicalDeviceAddress || "-"}
+  <div class="ticket-actions" style="margin-top:12px;">
+    ${physicalPhoneClean
+      ? `<button onclick="callDirectPhone('${physicalPhoneClean}')">📞 Llamar directo al botón</button>`
+      : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono registrado</button>`
+    }
+  </div>
+  <div style="font-size:13px;color:#6b7280;margin-top:8px;line-height:1.35;">
+    Este botón físico no tiene interfaz de usuario. La comunicación disponible es llamada directa al número asociado.
+  </div>
+</div>
+`
+  : "";
+
+const neighborHtml = isPhysicalDevice
+  ? physicalDeviceHtml
+  : `
+<div class="ticket-content-section">
+<strong>Vecino:</strong><br>
+${ticket.citizen_name || "-"}<br>
+📞 ${ticket.citizen_phone || "-"}<br>
+📍 ${ticket.declared_address || "-"}
+</div>
+`;
+
+const resolverActionsHtml = isPhysicalDevice
+  ? `
+<button onclick="activateNearestSiren()">
+  🚨 Activar sirena
+</button>
+${physicalPhoneClean
+  ? `<button onclick="callDirectPhone('${physicalPhoneClean}')">📞 Llamar directo</button>`
+  : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono</button>`
+}
+<div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
+  Caso generado por botón físico. No se envían solicitudes internas a PWA; usar llamada directa si hay teléfono asociado.
+</div>
+`
+  : `
+<button onclick="activateNearestSiren()">
+  🚨 Activar sirena
+</button>
+
+<button onclick="registerOperatorCall('voice')">
+  📞 Solicitar llamada de voz
+</button>
+
+<button onclick="registerOperatorCall('video')">
+  🎥 Solicitar videollamada
+</button>
+
+<div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
+  Estas opciones notifican al teléfono del vecino y registran su respuesta en el ticket.
+  No abren llamada real todavía.
+</div>
+`;
 
 
 document.getElementById(
@@ -1472,12 +1564,7 @@ ${formatDuration(resolutionTime)}
 
 
 
-<div class="ticket-content-section">
-<strong>Vecino:</strong><br>
-${ticket.citizen_name || "-"}<br>
-📞 ${ticket.citizen_phone || "-"}<br>
-📍 ${ticket.declared_address || "-"}
-</div>
+${neighborHtml}
 
 <div class="ticket-content-section">
 <strong>Resolutor:</strong><br>
@@ -1485,22 +1572,7 @@ ${ticket.citizen_name || "-"}<br>
 
 <div class="ticket-actions">
 
-<button onclick="activateNearestSiren()">
-  🚨 Activar sirena
-</button>
-
-<button onclick="registerOperatorCall('voice')">
-  📞 Solicitar llamada de voz
-</button>
-
-<button onclick="registerOperatorCall('video')">
-  🎥 Solicitar videollamada
-</button>
-
-<div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
-  Estas opciones notifican al teléfono del vecino y registran su respuesta en el ticket.
-  No abren llamada real todavía.
-</div>
+${resolverActionsHtml}
 
 	</div>
 	</div>
