@@ -342,7 +342,8 @@ padding: 10px;
 .ticket-active,
 .ticket-assigned,
 .ticket-acknowledged,
-.ticket-default {
+.ticket-default,
+.ticket-physical-sos {
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -358,6 +359,15 @@ padding: 10px;
 
 .ticket-active {
   background: #dc2626 !important;
+  animation: pulse-fast 1s infinite;
+}
+
+.ticket-physical-sos {
+  background: #dc2626 !important;
+  color: white;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .5px;
   animation: pulse-fast 1s infinite;
 }
 
@@ -759,7 +769,36 @@ function getTicketClass(ticket) {
   }
 }
 
+function isPhysicalSosTicket(ticket) {
+  const sourceType = String(ticket?.source_type || "").toUpperCase();
+  const alertType = String(ticket?.alert_type || "").toUpperCase();
+  const title = String(ticket?.title || "").toLowerCase();
+  const description = String(ticket?.description || "").toLowerCase();
+  const sourceEvent = String(ticket?.source_event_id || "").toUpperCase();
+
+  return (
+    sourceType === "GPS_DEVICE" ||
+    alertType === "SOS_DEVICE" ||
+    title.includes("botón físico") ||
+    title.includes("boton físico") ||
+    title.includes("boton fisico") ||
+    description.includes("botón físico") ||
+    description.includes("boton físico") ||
+    description.includes("boton fisico") ||
+    sourceEvent.startsWith("VSTI-")
+  );
+}
+
 function getTicketIcon(ticket) {
+  if (isPhysicalSosTicket(ticket)) {
+    return L.divIcon({
+      className: "",
+      html: `<div class="ticket-physical-sos">SOS</div>`,
+      iconSize: [58, 58],
+      iconAnchor: [29, 29]
+    });
+  }
+
   const cssClass = getTicketClass(ticket);
 
   return L.divIcon({
@@ -1237,6 +1276,24 @@ function getTicketCreatedMetadata(actions) {
   return getActionMetadata(created);
 }
 
+function extractPhoneFromText(text) {
+  const value = String(text || "");
+  const match = value.match(/(?:\+?56)?\s*9[\s\-]?[0-9]{4}[\s\-]?[0-9]{4}/);
+  if (!match) return "";
+
+  const digits = match[0].replace(/\D/g, "");
+
+  if (digits.startsWith("56")) {
+    return "+" + digits;
+  }
+
+  if (digits.startsWith("9") && digits.length === 9) {
+    return "+56" + digits;
+  }
+
+  return match[0];
+}
+
 function cleanPhoneForTel(phone) {
   return String(phone || "").replace(/[^+0-9]/g, "");
 }
@@ -1393,11 +1450,11 @@ const sourceEventId = ticket.source_event_id || "-";
 
 const communicationHtml = renderCommunications(data.actions);
 const ticketMeta = getTicketCreatedMetadata(data.actions);
-const isPhysicalDevice = ticket.source_type === "GPS_DEVICE";
+const isPhysicalDevice = isPhysicalSosTicket(ticket);
 const physicalDeviceName = ticketMeta.device_name || ticketMeta.name || ticket.title || "Botón SOS físico";
 const physicalDeviceId = ticketMeta.platform_id || ticketMeta.device_id || ticketMeta.ident || ticket.source_event_id || "-";
 const physicalDeviceIdent = ticketMeta.ident || "-";
-const physicalDevicePhone = ticketMeta.device_phone || ticketMeta.phone || "";
+const physicalDevicePhone = ticketMeta.device_phone || ticketMeta.phone || extractPhoneFromText(ticket.description) || "";
 const physicalDeviceAddress = ticketMeta.registered_address || ticket.description || "-";
 const physicalPhoneClean = cleanPhoneForTel(physicalDevicePhone);
 
