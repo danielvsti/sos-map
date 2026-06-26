@@ -1861,7 +1861,10 @@ ${ticket.citizen_name || "-"}<br>
 </div>
 `;
 
-const needsAssignment = !ticket.assigned_resolver_id && !ticket.resolver_name && !["CLOSED", "CANCELLED", "RESOLVED"].includes(String(ticket.state || ""));
+const latestAssignmentState = String(ticket.latest_assignment_state || "").toUpperCase();
+const assignmentWasRejected = latestAssignmentState === "REJECTED";
+const hasBlockingResolver = ticket.assigned_resolver_id && ticket.resolver_name && !assignmentWasRejected;
+const needsAssignment = (!hasBlockingResolver || assignmentWasRejected) && !["CLOSED", "CANCELLED", "RESOLVED"].includes(String(ticket.state || ""));
 
 const resolverActionsHtml = isPhysicalDevice
   ? `
@@ -1991,7 +1994,8 @@ ${neighborHtml}
 
 <div class="ticket-content-section">
 <strong>Resolutor:</strong><br>
-👮 ${ticket.resolver_name || "Sin asignar"}
+👮 ${assignmentWasRejected ? "Asignación rechazada / requiere reasignación" : (ticket.resolver_name || "Sin asignar")}
+${assignmentWasRejected ? `<div style="margin-top:8px;padding:10px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:14px;line-height:1.3;">⚠️ El resolutor rechazó este caso. Reintenta la asignación para enviarlo a otro resolutor disponible.</div>` : ""}
 
 <div class="ticket-actions">
 
