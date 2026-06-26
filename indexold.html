@@ -596,29 +596,6 @@ cursor: pointer;
 width: 100%;
 }
 
-
-
-.boundary-badge {
-  position: absolute;
-  left: 20px;
-  bottom: 22px;
-  z-index: 850;
-  background: rgba(255,255,255,0.94);
-  border: 1px solid rgba(17,24,39,0.12);
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #374151;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.16);
-}
-.boundary-badge strong { color:#111827; }
-.ticket-actions button.btn-secondary {
-  background: #2563eb;
-}
-.ticket-actions button.btn-secondary:hover {
-  background: #1d4ed8;
-}
-
 </style>
 </head>
 
@@ -695,7 +672,6 @@ Total nodos:
 </div>
 
 <div id="map"></div>
-<div id="boundaryBadge" class="boundary-badge hidden">Límite operacional: <strong>sin cargar</strong></div>
 
 <div id="ticketPanel" class="ticket-panel hidden">
 <div class="ticket-header">
@@ -850,8 +826,6 @@ mapUpdateInterval = setInterval(loadMapState, 3000);
 
 const DEFAULT_CENTER = [-33.01895, -71.55090];
 const DEFAULT_ZOOM = 15;
-let municipalBoundaryLayer = null;
-let lastControlCenter = null;
 
 const map = L.map("map").setView(
 	DEFAULT_CENTER,
@@ -891,88 +865,6 @@ map.on("dragstart", () => {
 map.on("zoomstart", () => {
 	userMovedMap = true;
 	});
-
-function isFiniteCoord(value) {
-  const n = Number(value);
-  return Number.isFinite(n);
-}
-
-function setBoundaryBadge(controlCenter, visible) {
-  const badge = document.getElementById("boundaryBadge");
-  if (!badge) return;
-  if (!visible) {
-    badge.classList.add("hidden");
-    return;
-  }
-  badge.innerHTML = `Límite operacional: <strong>${controlCenter?.name || controlCenter?.code || CONTROL_CENTER_CODE}</strong>`;
-  badge.classList.remove("hidden");
-}
-
-function drawMunicipalBoundary(controlCenter) {
-  lastControlCenter = controlCenter || lastControlCenter;
-  if (!map || !controlCenter) return null;
-
-  if (municipalBoundaryLayer) {
-    map.removeLayer(municipalBoundaryLayer);
-    municipalBoundaryLayer = null;
-  }
-
-  const boundary = controlCenter.boundary_geojson;
-  if (!boundary || !window.L || !L.geoJSON) {
-    setBoundaryBadge(controlCenter, false);
-    return null;
-  }
-
-  try {
-    municipalBoundaryLayer = L.geoJSON(boundary, {
-      style: {
-        color: "#111827",
-        weight: 2,
-        opacity: 0.88,
-        dashArray: "8 7",
-        fillColor: "#2563eb",
-        fillOpacity: 0.035
-      },
-      interactive: false
-    }).addTo(map);
-    setBoundaryBadge(controlCenter, true);
-    return municipalBoundaryLayer;
-  } catch (error) {
-    console.warn("No fue posible dibujar límite operacional", error);
-    setBoundaryBadge(controlCenter, false);
-    return null;
-  }
-}
-
-function focusMapOnMunicipality(controlCenter, force = false) {
-  if (!map || !controlCenter) return false;
-  if (!force && userMovedMap) return false;
-
-  if (municipalBoundaryLayer && municipalBoundaryLayer.getBounds) {
-    const bounds = municipalBoundaryLayer.getBounds();
-    if (bounds && bounds.isValid()) {
-      map.fitBounds(bounds, {
-        paddingTopLeft: [40, 40],
-        paddingBottomRight: [460, 40],
-        maxZoom: Number(controlCenter.map_zoom || 13),
-        animate: false
-      });
-      mapInitialized = true;
-      return true;
-    }
-  }
-
-  const lat = Number(controlCenter.map_center_lat ?? controlCenter.latitude);
-  const lon = Number(controlCenter.map_center_lon ?? controlCenter.longitude);
-  const zoom = Number(controlCenter.map_zoom || 13);
-  if (Number.isFinite(lat) && Number.isFinite(lon)) {
-    map.setView([lat, lon], zoom, { animate: false });
-    mapInitialized = true;
-    return true;
-  }
-
-  return false;
-}
 
 
 L.control.zoom({ position: "topleft" }).addTo(map);
@@ -1747,28 +1639,6 @@ function renderCommunications(actions) {
   }).join("");
 }
 
-async function autoAssignTicket(ticketId) {
-  if (!ticketId) return;
-  try {
-    const res = await fetch(`${TICKET_URL}/${ticketId}/auto-assign`, {
-      method: "POST",
-      headers: authHeaders()
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.status !== "ok") {
-      alert(data.message || "No fue posible reasignar el ticket");
-      return;
-    }
-    alert(`Asignado a ${data.resolver?.full_name || "resolutor disponible"}`);
-    await loadMapState();
-    await openTicketPanel(ticketId);
-  } catch (error) {
-    console.error(error);
-    alert("No fue posible reintentar la asignación");
-  }
-}
-
-
 async function openTicketPanel(ticketId) {
 
 try {
@@ -1861,14 +1731,11 @@ ${ticket.citizen_name || "-"}<br>
 </div>
 `;
 
-const needsAssignment = !ticket.assigned_resolver_id && !ticket.resolver_name && !["CLOSED", "CANCELLED", "RESOLVED"].includes(String(ticket.state || ""));
-
 const resolverActionsHtml = isPhysicalDevice
   ? `
 <button onclick="activateNearestSiren()">
   🚨 Activar sirena
 </button>
-${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Reintentar asignación</button>` : ""}
 ${physicalPhoneClean
   ? `<button onclick="callDirectPhone('${physicalPhoneClean}')">📞 Llamar directo</button>`
   : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono</button>`
@@ -1881,7 +1748,6 @@ ${physicalPhoneClean
 <button onclick="activateNearestSiren()">
   🚨 Activar sirena
 </button>
-${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Reintentar asignación</button>` : ""}
 
 <div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
   Llamadas y videollamadas internas deshabilitadas temporalmente hasta integración WA-CENTER/WebRTC.
@@ -2045,9 +1911,6 @@ fetch(PUBLIC_MAP_STATE_URL)
 const data = await dashboardRes.json();
 const publicData = await publicRes.json();
 
-const controlCenter = data.control_center || null;
-drawMunicipalBoundary(controlCenter);
-
 const devices = data.devices || [];
 const sirens = data.sirens || [];
       currentSirens = sirens;
@@ -2115,7 +1978,6 @@ orphanMobileEvents.forEach(renderMobileEvent);
 resolvers.forEach(renderResolver);
 
 if (!userMovedMap) {
-const focusedOnBoundary = focusMapOnMunicipality(controlCenter, false);
 const bounds = [];
 
 visibleTickets.forEach(t => {
@@ -2140,7 +2002,6 @@ sirens.forEach(s => {
 bounds.push([s.latitude, s.longitude]);
 });
 
-if (!focusedOnBoundary) {
 if (bounds.length > 0) {
 map.fitBounds(bounds, {
 padding: [50, 50],
@@ -2151,7 +2012,6 @@ mapInitialized = true;
 } else if (!mapInitialized) {
 map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 mapInitialized = true;
-}
 }
 }
 
