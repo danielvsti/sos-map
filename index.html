@@ -919,6 +919,7 @@ const resolverMarkers = {};
 let selectedTicket = null;
 let selectedMobileEvent = null;
 let currentSirens = [];
+let controlBoundaryLayer = null;
 
 async function activateSiren(sirenId) {
 if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
@@ -1901,6 +1902,37 @@ alert("No fue posible cargar el ticket");
 }
 
 
+
+function renderControlCenterBoundary(controlCenter) {
+  if (!controlCenter || !controlCenter.boundary_geojson || !window.L || !window.L.geoJSON) return;
+
+  if (controlBoundaryLayer) {
+    map.removeLayer(controlBoundaryLayer);
+    controlBoundaryLayer = null;
+  }
+
+  controlBoundaryLayer = L.geoJSON(controlCenter.boundary_geojson, {
+    style: {
+      color: "#0f172a",
+      weight: 3,
+      opacity: 0.9,
+      fillColor: "#38bdf8",
+      fillOpacity: 0.045,
+      dashArray: "7 7"
+    }
+  }).addTo(map);
+
+  controlBoundaryLayer.bindPopup(`Límite operacional ${controlCenter.name || controlCenter.code || "Centro de control"}`);
+}
+
+function controlCenterFallbackView(controlCenter) {
+  const lat = Number(controlCenter?.map_center_lat || controlCenter?.latitude);
+  const lon = Number(controlCenter?.map_center_lon || controlCenter?.longitude);
+  const zoom = Number(controlCenter?.map_zoom || DEFAULT_ZOOM);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon, zoom };
+  return null;
+}
+
 async function loadMapState() {
 try {
 const [dashboardRes, publicRes] = await Promise.all([
@@ -1910,6 +1942,7 @@ fetch(PUBLIC_MAP_STATE_URL)
 
 const data = await dashboardRes.json();
 const publicData = await publicRes.json();
+renderControlCenterBoundary(data.control_center);
 
 const devices = data.devices || [];
 const sirens = data.sirens || [];
@@ -2010,7 +2043,16 @@ maxZoom: 17
 
 mapInitialized = true;
 } else if (!mapInitialized) {
-map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+const fallback = controlCenterFallbackView(data.control_center);
+if (controlBoundaryLayer) {
+  try {
+    map.fitBounds(controlBoundaryLayer.getBounds().pad(0.06), { maxZoom: fallback?.zoom || DEFAULT_ZOOM });
+  } catch (e) {
+    map.setView(fallback ? [fallback.lat, fallback.lon] : DEFAULT_CENTER, fallback?.zoom || DEFAULT_ZOOM);
+  }
+} else {
+  map.setView(fallback ? [fallback.lat, fallback.lon] : DEFAULT_CENTER, fallback?.zoom || DEFAULT_ZOOM);
+}
 mapInitialized = true;
 }
 }
