@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>VSTI SOS - Mapa</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+
+<style>
+html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
+#map { height: 100vh; width: 100%; }
+
+.panel {
+position: absolute;
+top: 28px;
+left: 32px;
+      z-index: 999;
+background: white;
+padding: 18px 22px;
+	 border-radius: 18px;
+	 box-shadow: 0 4px 18px rgba(0,0,0,.25);
+	 font-size: 20px;
+	 min-width: 270px;
+}
+
+.online { color: green; font-weight: bold; }
+.offline { color: red; font-weight: bold; }
+
+.leaflet-control-zoom {
+	margin-top: 430px !important;
+	margin-left: 32px !important;
+}
+
+.logo-vsti {
+width: 260px;
+display: block;
+margin: 0 auto 8px auto;
+}
+
+.panel-title {
+	text-align: center;
+	font-size: 20px;
+	font-weight: bold;
+color: #374151;
+       margin-bottom: 10px;
+}
+
+.panel-small {
+	font-size: 18px;
+}
+
+.resolver-marker-available {
+background: #16a34a;
+color: white;
+       border-radius: 50%;
+width: 38px;
+height: 38px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-size: 20px;
+}
+
+.resolver-marker-busy {
+background: #ea580c;
+color: white;
+       border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-size: 22px;
+}
+
+.resolver-marker-enroute {
+background: #2563eb;
+color: white;
+       border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-size: 22px;
+}
+
+.sos-marker-normal {
+background: #15803d;
+color: white;
+       border-radius: 50%;
+width: 34px;
+height: 34px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	box-shadow: 0 2px 8px rgba(0,0,0,.35);
+	font-weight: bold;
+	font-size: 11px;
+}
+
+.sos-marker-recent {
+background: #ea580c;
+color: white;
+       border-radius: 50%;
+width: 38px;
+height: 38px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	box-shadow: 0 2px 10px rgba(0,0,0,.4);
+	font-weight: bold;
+	font-size: 11px;
+}
+
+.sos-marker-active {
+background: #dc2626;
+color: white;
+       border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-weight: bold;
+	font-size: 12px;
+animation: sosPulse 1s infinite;
+}
+
+@keyframes sosPulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+transform: scale(1);
+	}
+	70% {
+		box-shadow: 0 0 0 28px rgba(220,38,38,0);
+transform: scale(1.12);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,0);
+transform: scale(1);
+	}
+}
+
+.siren-marker {
+background: #334155;
+color: white;
+       border-radius: 50%;
+width: 38px;
+height: 38px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	box-shadow: 0 2px 8px rgba(0,0,0,.4);
+	font-size: 20px;
+}
+
+.siren-marker-active {
+background: #dc2626;
+color: white;
+       border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-size: 22px;
+animation: sirenPulse 1s infinite;
+}
+
+@keyframes sirenPulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,.8);
+transform: scale(1);
+	}
+	70% {
+		box-shadow: 0 0 0 28px rgba(220,38,38,0);
+transform: scale(1.12);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(220,38,38,0);
+transform: scale(1);
+	}
+}
+
+.btn-siren {
+	margin-top: 10px;
+background: #dc2626;
+color: white;
+border: none;
+padding: 8px 12px;
+	 border-radius: 8px;
+cursor: pointer;
+	font-weight: bold;
+}
+
+.btn-off {
+background: #374151;
+}
+
+.btn-ack {
+background: #15803d;
+}
+
+.mobile-sos-active {
+background: #dc2626;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+ align-items: center;
+ justify-content: center;
+border: 3px solid white;
+font-size: 22px;
+animation: sosPulse 1s infinite;
+}
+
+.mobile-sos-ack {
+background: #ca8a04;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+ align-items: center;
+ justify-content: center;
+border: 3px solid white;
+font-size: 22px;
+}
+
+.mobile-sos-cancelled {
+background: #6b7280;
+color: white;
+border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+ align-items: center;
+ justify-content: center;
+border: 3px solid white;
+font-size: 22px;
+}
+
+
+.ticket-panel {
+position: absolute;
+top: 20px;
+right: 20px;
+width: 420px;
+max-height: calc(100vh - 40px);
+overflow-y: auto;
+
+background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+
+    z-index: 2000;
+}
+
+
+
+
+.hidden {
+display: none;
+}
+
+.ticket-header {
+display: flex;
+ justify-content: space-between;
+ align-items: center;
+
+padding: 16px;
+ border-bottom: 1px solid #e5e7eb;
+
+ font-size: 20px;
+ font-weight: bold;
+}
+
+.ticket-header button {
+border: none;
+background: none;
+cursor: pointer;
+font-size: 20px;
+}
+
+.ticket-content-section {
+padding: 16px;
+ border-bottom: 1px solid #f3f4f6;
+}
+
+
+.ticket-actions {
+display: flex;
+ flex-wrap: wrap;
+gap: 8px;
+margin-top: 12px;
+}
+
+.ticket-actions button {
+border: none;
+border-radius: 8px;
+padding: 10px 14px;
+background: #2563eb;
+color: white;
+cursor: pointer;
+font-size: 14px;
+}
+
+.ticket-actions button:hover {
+background: #1d4ed8;
+}
+
+
+
+.timeline-item {
+margin-bottom: 12px;
+padding-left: 12px;
+border-left: 3px solid #2563eb;
+}
+
+.timeline-date {
+font-size: 12px;
+color: #6b7280;
+}
+
+.contact-card {
+background: #f9fafb;
+padding: 10px;
+ border-radius: 10px;
+ margin-top: 8px;
+}
+
+.ticket-active,
+.ticket-assigned,
+.ticket-acknowledged,
+.ticket-default,
+.ticket-physical-sos {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 4px solid white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 24px;
+  box-shadow: 0 0 12px rgba(0,0,0,.35);
+}
+
+.ticket-active {
+  background: #dc2626 !important;
+  animation: pulse-fast 1s infinite;
+}
+
+.ticket-physical-sos {
+  background: #dc2626 !important;
+  color: white;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .5px;
+  animation: pulse-fast 1s infinite;
+}
+
+.ticket-assigned {
+background: #f97316 !important;
+  animation: pulse-slow 2s infinite;
+}
+
+.ticket-acknowledged {
+  background: #eab308;
+}
+
+.ticket-default {
+  background: #64748b;
+}
+
+@keyframes pulse-fast {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220,38,38,.7);
+  }
+
+  70% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 22px rgba(220,38,38,0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-slow {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(249,115,22,.6);
+  }
+
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 16px rgba(249,115,22,0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+
+
+.call-panel {
+position: absolute;
+left: 50%;
+top: 50%;
+transform: translate(-50%, -50%);
+width: min(920px, calc(100vw - 40px));
+height: min(680px, calc(100vh - 40px));
+background: #111827;
+border-radius: 16px;
+box-shadow: 0 12px 36px rgba(0,0,0,.45);
+z-index: 3000;
+overflow: hidden;
+display: flex;
+flex-direction: column;
+}
+
+.call-panel.hidden {
+display: none;
+}
+
+.call-header {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 12px 16px;
+background: #0f172a;
+color: white;
+font-size: 18px;
+font-weight: bold;
+}
+
+.call-header button {
+border: none;
+background: #dc2626;
+color: white;
+border-radius: 8px;
+padding: 8px 12px;
+cursor: pointer;
+font-size: 18px;
+}
+
+#centralCallFrame {
+flex: 1;
+width: 100%;
+border: none;
+background: #111827;
+}
+
+.ticket-id-box {
+background: #f9fafb;
+border: 1px solid #e5e7eb;
+border-radius: 12px;
+padding: 12px;
+word-break: break-all;
+}
+
+.comm-card {
+background: #f9fafb;
+border-radius: 12px;
+padding: 12px;
+margin-top: 10px;
+}
+
+.comm-card audio,
+.comm-card video {
+width: 100%;
+margin-top: 8px;
+}
+
+.comm-meta {
+font-size: 12px;
+color: #6b7280;
+margin-top: 6px;
+}
+
+
+
+.login-overlay {
+position: fixed;
+inset: 0;
+z-index: 5000;
+background: rgba(15,23,42,.82);
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 24px;
+backdrop-filter: blur(6px);
+}
+
+.login-overlay.hidden {
+display: none;
+}
+
+.login-card {
+width: min(520px, 100%);
+background: white;
+border-radius: 22px;
+box-shadow: 0 20px 55px rgba(0,0,0,.35);
+padding: 28px;
+}
+
+.login-card h2 {
+margin: 8px 0 8px;
+font-size: 32px;
+color: #111827;
+}
+
+.login-card p {
+color: #4b5563;
+font-size: 16px;
+line-height: 1.45;
+font-weight: 700;
+}
+
+.login-card label {
+display: block;
+font-weight: 900;
+color: #374151;
+margin: 16px 0 8px;
+}
+
+.login-card input {
+width: 100%;
+border: 2px solid #d1d5db;
+border-radius: 14px;
+padding: 14px;
+font-size: 18px;
+}
+
+.login-card button {
+width: 100%;
+margin-top: 14px;
+border: none;
+border-radius: 14px;
+padding: 14px;
+background: #16a34a;
+color: white;
+font-size: 18px;
+font-weight: 900;
+cursor: pointer;
+}
+
+.login-error {
+margin-top: 12px;
+color: #b91c1c;
+font-weight: 900;
+}
+
+.login-hint {
+font-size: 14px;
+color: #6b7280;
+font-weight: 800;
+margin-top: 12px;
+}
+
+.operator-pill {
+margin-top: 10px;
+padding: 8px 10px;
+border-radius: 999px;
+background: #e0f2fe;
+color: #075985;
+font-size: 13px;
+font-weight: 900;
+text-align: center;
+}
+
+.btn-logout {
+margin-top: 8px;
+background: #374151;
+color: white;
+border: 0;
+border-radius: 10px;
+padding: 8px 10px;
+font-weight: 900;
+cursor: pointer;
+width: 100%;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <div class="panel-title">Sistema SOS Municipal</div>
+    <h2>Panel de control</h2>
+    <p>Acceso restringido para usuarios con rol <strong>OPERATOR</strong> o <strong>ADMIN</strong>.</p>
+    <label>Teléfono usuario operador/admin</label>
+    <input id="panelLoginPhone" placeholder="+569XXXXXXXX" autocomplete="tel" />
+    <button id="panelLoginButton">Entrar al panel</button>
+    <div id="panelLoginError" class="login-error"></div>
+    <div class="login-hint">Para demo, el acceso se valida por teléfono registrado. Luego conectamos OTP/WhatsApp.</div>
+  </div>
+</div>
+
+<div class="panel">
+
+<img
+src="logo-vsti.png"
+alt="VS&TI"
+class="logo-vsti"
+>
+
+<div class="panel-title">
+Sistema SOS Municipal
+</div>
+
+<div id="operatorSession" class="operator-pill" style="display:none"></div>
+<button id="panelLogoutButton" class="btn-logout" style="display:none">Cerrar sesión</button>
+
+<div class="panel-small">
+Estado:
+<span id="status" class="offline">cargando...</span>
+</div>
+
+<div class="panel-small">
+Dispositivos:
+<span id="count">0</span>
+</div>
+
+<div class="panel-small">
+Tickets abiertos:
+<span id="activeSosCount">0</span>
+</div>
+
+<div class="panel-small">
+Botones recientes:
+<span id="recentSosCount">0</span>
+</div>
+
+<div class="panel-small">
+Tickets móviles:
+<span id="mobileSosCount">0</span>
+</div>
+
+<div class="panel-small">
+Sirenas:
+<span id="sirenCount">0</span>
+</div>
+
+<div class="panel-small">
+Actualizado:
+<span id="lastUpdate">-</span>
+</div>
+
+<div class="panel-small">
+Total nodos:
+<span id="totalNodes">0</span>
+</div>
+
+</div>
+
+<div id="map"></div>
+
+<div id="ticketPanel" class="ticket-panel hidden">
+<div class="ticket-header">
+<span id="ticketTitle">Ticket</span>
+
+<button onclick="closeTicketPanel(event)">✖</button>
+</div>
+
+<div id="ticketContent">
+Selecciona una emergencia.
+</div>
+</div>
+
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const CONTROL_CENTER_CODE = "CC-VINA";
+const MAP_STATE_URL = `https://sos.vsti.cl/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
+const PUBLIC_MAP_STATE_URL = "https://sos.vsti.cl/public/map-state";
+const TICKET_URL = "https://sos.vsti.cl/tickets";
+const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
+const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
+const ACK_SOS_URL = "https://sos.vsti.cl/public/devices/ack-sos";
+const ACK_MOBILE_SOS_URL = "https://sos.vsti.cl/public/mobile/ack";
+
+const PANEL_TOKEN_KEY = "sos_control_panel_session_token";
+let panelSessionUser = null;
+let mapUpdateInterval = null;
+
+function getPanelToken() {
+return localStorage.getItem(PANEL_TOKEN_KEY) || "";
+}
+
+function setPanelToken(token) {
+localStorage.setItem(PANEL_TOKEN_KEY, token);
+}
+
+function clearPanelToken() {
+localStorage.removeItem(PANEL_TOKEN_KEY);
+}
+
+function authHeaders() {
+const token = getPanelToken();
+return token ? { "Authorization": `Bearer ${token}` } : {};
+}
+
+function jsonHeaders() {
+return { "Content-Type": "application/json", ...authHeaders() };
+}
+
+function showLoginOverlay(message = "") {
+document.getElementById("loginOverlay").classList.remove("hidden");
+document.getElementById("panelLoginError").textContent = message;
+document.getElementById("operatorSession").style.display = "none";
+document.getElementById("panelLogoutButton").style.display = "none";
+}
+
+function showControlPanel(user) {
+panelSessionUser = user || panelSessionUser;
+document.getElementById("loginOverlay").classList.add("hidden");
+const pill = document.getElementById("operatorSession");
+pill.style.display = "block";
+pill.textContent = `${panelSessionUser?.full_name || "Operador"} · ${panelSessionUser?.role || "OPERATOR"}`;
+document.getElementById("panelLogoutButton").style.display = "block";
+}
+
+async function panelLogin() {
+const phone = document.getElementById("panelLoginPhone").value.trim();
+const errorEl = document.getElementById("panelLoginError");
+const button = document.getElementById("panelLoginButton");
+errorEl.textContent = "";
+
+if (!phone) {
+errorEl.textContent = "Ingresa el teléfono del usuario operador o administrador.";
+return;
+}
+
+try {
+button.disabled = true;
+button.textContent = "Entrando...";
+
+const res = await fetch("https://sos.vsti.cl/auth/panel-login", {
+method: "POST",
+headers: jsonHeaders(),
+body: JSON.stringify({ phone, panel_type: "CONTROL_CENTER" })
+});
+
+const data = await res.json();
+
+if (!res.ok || data.status !== "ok") {
+throw new Error(data.message || "No fue posible ingresar");
+}
+
+setPanelToken(data.token);
+showControlPanel(data.user);
+startMapUpdates();
+} catch (error) {
+console.error(error);
+clearPanelToken();
+errorEl.textContent = error.message;
+} finally {
+button.disabled = false;
+button.textContent = "Entrar al panel";
+}
+}
+
+async function checkPanelSession() {
+const token = getPanelToken();
+if (!token) {
+showLoginOverlay();
+return;
+}
+
+try {
+const res = await fetch("https://sos.vsti.cl/auth/session", {
+headers: authHeaders()
+});
+const data = await res.json();
+
+if (!res.ok || data.status !== "ok") {
+throw new Error(data.message || "Sesión inválida");
+}
+
+if (!["OPERATOR", "ADMIN"].includes(data.user.role)) {
+throw new Error("Este panel requiere rol OPERATOR o ADMIN.");
+}
+
+showControlPanel(data.user);
+startMapUpdates();
+} catch (error) {
+console.error(error);
+clearPanelToken();
+showLoginOverlay(error.message);
+}
+}
+
+function logoutPanel() {
+clearPanelToken();
+if (mapUpdateInterval) {
+clearInterval(mapUpdateInterval);
+mapUpdateInterval = null;
+}
+showLoginOverlay("Sesión cerrada.");
+}
+
+function startMapUpdates() {
+if (mapUpdateInterval) return;
+loadMapState();
+mapUpdateInterval = setInterval(loadMapState, 3000);
+}
+
+const DEFAULT_CENTER = [-33.01895, -71.55090];
+const DEFAULT_ZOOM = 15;
+
+const map = L.map("map").setView(
+	DEFAULT_CENTER,
+	DEFAULT_ZOOM
+	);
+const ticketPanel = document.getElementById("ticketPanel");
+
+L.DomEvent.disableClickPropagation(ticketPanel);
+L.DomEvent.disableScrollPropagation(ticketPanel);
+
+/*
+  Capas Leaflet: los tickets / alertas móviles deben quedar siempre arriba.
+  Esto evita que el ícono 📱 quede tapado por botones GPS, sirenas o resolutores
+  cuando comparten la misma ubicación o están muy cerca.
+*/
+map.createPane("devicesPane");
+map.getPane("devicesPane").style.zIndex = 600;
+
+map.createPane("sirensPane");
+map.getPane("sirensPane").style.zIndex = 650;
+
+map.createPane("resolversPane");
+map.getPane("resolversPane").style.zIndex = 700;
+
+map.createPane("ticketsPane");
+map.getPane("ticketsPane").style.zIndex = 900;
+
+
+let mapInitialized = false;
+let userMovedMap = false;
+
+
+map.on("dragstart", () => {
+	userMovedMap = true;
+	});
+
+map.on("zoomstart", () => {
+	userMovedMap = true;
+	});
+
+
+L.control.zoom({ position: "topleft" }).addTo(map);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+attribution: "© OpenStreetMap"
+}).addTo(map);
+
+function getSosIcon(device) {
+let cssClass = "sos-marker-normal";
+
+if (device.sos_state === "ACTIVE") {
+	cssClass = "sos-marker-active";
+} else if (device.sos_state === "RECENT") {
+	cssClass = "sos-marker-recent";
+}
+
+return L.divIcon({
+className: "",
+html: `<div class="${cssClass}">SOS</div>`,
+iconSize: [60, 60],
+iconAnchor: [30, 30]
+});
+}
+
+const sirenIcon = L.divIcon({
+className: "",
+html: `<div class="siren-marker">📢</div>`,
+iconSize: [44, 44],
+iconAnchor: [22, 22]
+});
+
+const sirenActiveIcon = L.divIcon({
+className: "",
+html: `<div class="siren-marker-active">📢</div>`,
+iconSize: [70, 70],
+iconAnchor: [35, 35]
+});
+
+const mobileSosIcon = L.divIcon({
+className: "",
+html: `<div class="mobile-sos-marker">📱</div>`,
+iconSize: [70, 70],
+iconAnchor: [35, 35]
+});
+
+const deviceMarkers = {};
+const sirenMarkers = {};
+const mobileMarkers = {};
+const mobileEventMarkers = {};
+const resolverMarkers = {};
+let selectedTicket = null;
+let selectedMobileEvent = null;
+let currentSirens = [];
+
+async function activateSiren(sirenId) {
+if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
+
+const res = await fetch(SIREN_ACTIVATE_URL, {
+method: "POST",
+headers: jsonHeaders(),
+body: JSON.stringify({
+siren_id: sirenId,
+duration_seconds: 60
+})
+});
+
+const data = await res.json();
+
+if (data.status === "ok") {
+await loadMapState();
+} else {
+alert("Error activando sirena");
+}
+}
+
+async function deactivateSiren(sirenId) {
+const res = await fetch(SIREN_DEACTIVATE_URL, {
+method: "POST",
+headers: jsonHeaders(),
+body: JSON.stringify({ siren_id: sirenId })
+});
+
+const data = await res.json();
+
+if (data.status === "ok") {
+await loadMapState();
+} else {
+alert("Error apagando sirena");
+}
+}
+
+async function ackSos(deviceId) {
+const res = await fetch(ACK_SOS_URL, {
+method: "POST",
+headers: jsonHeaders(),
+body: JSON.stringify({
+device_id: deviceId
+})
+});
+
+const data = await res.json();
+
+if (data.status === "ok") {
+await loadMapState();
+} else {
+alert("No fue posible reconocer el SOS");
+}
+}
+
+async function ackMobileSos(eventId) {
+const res = await fetch(ACK_MOBILE_SOS_URL, {
+method: "POST",
+headers: jsonHeaders(),
+body: JSON.stringify({
+event_id: eventId,
+operator: "central-web"
+})
+});
+
+const data = await res.json();
+
+if (data.status === "ok") {
+await loadMapState();
+} else {
+alert("No fue posible reconocer el SOS móvil");
+}
+}
+
+function getTicketClass(ticket) {
+  switch (ticket.state) {
+    case "ACTIVE":
+      return "ticket-active";
+
+    case "ASSIGNED":
+      return "ticket-assigned";
+
+    case "ACKNOWLEDGED":
+      return "ticket-acknowledged";
+
+    default:
+      return "ticket-default";
+  }
+}
+
+function isPhysicalSosTicket(ticket) {
+  const sourceType = String(ticket?.source_type || "").toUpperCase();
+  const alertType = String(ticket?.alert_type || "").toUpperCase();
+  const title = String(ticket?.title || "").toLowerCase();
+  const description = String(ticket?.description || "").toLowerCase();
+  const sourceEvent = String(ticket?.source_event_id || "").toUpperCase();
+
+  return (
+    sourceType === "GPS_DEVICE" ||
+    alertType === "SOS_DEVICE" ||
+    title.includes("botón físico") ||
+    title.includes("boton físico") ||
+    title.includes("boton fisico") ||
+    description.includes("botón físico") ||
+    description.includes("boton físico") ||
+    description.includes("boton fisico") ||
+    sourceEvent.startsWith("VSTI-")
+  );
+}
+
+function getTicketIcon(ticket) {
+  if (isPhysicalSosTicket(ticket)) {
+    return L.divIcon({
+      className: "",
+      html: `<div class="ticket-physical-sos">SOS</div>`,
+      iconSize: [58, 58],
+      iconAnchor: [29, 29]
+    });
+  }
+
+  const cssClass = getTicketClass(ticket);
+
+  return L.divIcon({
+    className: "",
+    html: `<div class="${cssClass}">📱</div>`,
+    iconSize: [52, 52],
+    iconAnchor: [26, 26]
+  });
+}
+
+
+function getResolverIcon(resolver) {
+
+	let cssClass = "resolver-marker-available";
+
+	if (resolver.status === "BUSY") {
+		cssClass = "resolver-marker-busy";
+	}
+
+	if (resolver.status === "EN_ROUTE") {
+		cssClass = "resolver-marker-enroute";
+	}
+
+	return L.divIcon({
+className: "",
+html: `<div class="${cssClass}">👮</div>`,
+iconSize: [50, 50],
+iconAnchor: [25, 25]
+});
+}
+
+
+function renderDevice(device) {
+	const name = device.name || `Botón SOS ${device.id}`;
+	const icon = getSosIcon(device);
+
+	const sosText =
+		device.sos_state === "ACTIVE"
+		? '<span style="color:#dc2626;font-weight:bold;">🚨 SOS ACTIVO</span>'
+		: device.sos_state === "RECENT"
+		? '<span style="color:#ea580c;font-weight:bold;">⚠️ SOS RECIENTE</span>'
+		: '<span style="color:#15803d;font-weight:bold;">✅ NORMAL</span>';
+
+	const popup = `
+		<strong>${name}</strong><br>
+		ID: ${device.id}<br>
+		Estado SOS: ${sosText}<br>
+		Estado dispositivo: ${device.online ? "Online" : "Offline"}<br>
+		Último evento: ${device.last_event_type ?? "-"}<br>
+		Latitud: ${device.latitude}<br>
+		Longitud: ${device.longitude}<br>
+		Velocidad: ${device.speed ?? "-"} km/h<br>
+		Dirección: ${device.direction ?? "-"}°<br>
+		Satélites: ${device.satellites ?? "-"}<br>
+		GPS válido: ${device.valid ? "Sí" : "No"}<br>
+		Última actualización: ${device.last_seen ?? "-"}<br>
+		${
+			device.sos_state === "ACTIVE" || device.sos_state === "RECENT"
+				? `<br><button class="btn-siren btn-ack" onclick="ackSos('${device.id}')">
+				✅ Marcar como atendido
+				</button>`
+				: ""
+		}
+	`;
+
+	if (!deviceMarkers[device.id]) {
+		deviceMarkers[device.id] = L.marker(
+				[device.latitude, device.longitude],
+				{ icon, pane: "devicesPane", zIndexOffset: 0 }
+				).addTo(map);
+	} else {
+		deviceMarkers[device.id].setLatLng([
+				device.latitude,
+				device.longitude
+		]);
+
+		deviceMarkers[device.id].setIcon(icon);
+	}
+
+	deviceMarkers[device.id].bindPopup(popup);
+}
+
+
+function renderSiren(siren) {
+  const active =
+    siren.active === true ||
+    siren.relay === true ||
+    siren.state === "ON";
+
+  const icon = active
+    ? sirenActiveIcon
+    : sirenIcon;
+
+  const popup = `
+    <strong>${siren.name}</strong><br>
+    ID: ${siren.id}<br>
+    Estado: ${
+      active
+        ? '<strong style="color:red;">ACTIVADA</strong>'
+        : '<strong>Apagada</strong>'
+    }<br>
+    Ubicación: ${siren.location ?? "-"}<br>
+    ${
+      active
+        ? `<button class="btn-siren btn-off" onclick="deactivateSiren('${siren.id}')">Apagar sirena</button>`
+        : `<button class="btn-siren" onclick="activateSiren('${siren.id}')">🚨 Activar sirena 60s</button>`
+    }
+  `;
+
+  if (!sirenMarkers[siren.id]) {
+    sirenMarkers[siren.id] = L.marker(
+      [siren.latitude, siren.longitude],
+      { icon, pane: "sirensPane", zIndexOffset: 1000 }
+    ).addTo(map);
+  } else {
+    sirenMarkers[siren.id].setLatLng([
+      siren.latitude,
+      siren.longitude
+    ]);
+
+    sirenMarkers[siren.id].setIcon(icon);
+    sirenMarkers[siren.id].setZIndexOffset(1000);
+  }
+
+  sirenMarkers[siren.id].bindPopup(popup);
+}
+
+
+function isValidCoordinate(lat, lng) {
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+}
+
+function coordKey(lat, lng) {
+  // 5 decimales agrupa puntos separados por aprox. 1 metro.
+  return `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
+}
+
+function offsetLatLng(lat, lng, index, radiusMeters = 18) {
+  // Desplaza visualmente marcadores traslapados en una pequeña circunferencia.
+  // No cambia la ubicación real; solo evita que un marcador tape a otro.
+  const angle = (index * 55) * Math.PI / 180;
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+
+  const dLat = (radiusMeters * Math.cos(angle)) / 111320;
+  const dLng = (radiusMeters * Math.sin(angle)) /
+    (111320 * Math.cos(latNum * Math.PI / 180));
+
+  return [latNum + dLat, lngNum + dLng];
+}
+
+function applyVisualOffsets(devices, sirens, resolvers, tickets, mobileEvents) {
+  const occupied = new Map();
+
+  function register(lat, lng) {
+    if (!isValidCoordinate(lat, lng)) return;
+    const key = coordKey(lat, lng);
+    occupied.set(key, (occupied.get(key) || 0) + 1);
+  }
+
+  // Primero registramos puntos base que podrían tapar al ticket móvil.
+  devices.forEach(d => register(d.latitude, d.longitude));
+  sirens.forEach(s => register(s.latitude, s.longitude));
+  resolvers.forEach(r => register(r.latitude, r.longitude));
+
+  function assignVisualPoint(item) {
+    if (!isValidCoordinate(item.latitude, item.longitude)) return;
+
+    const key = coordKey(item.latitude, item.longitude);
+    const index = occupied.get(key) || 0;
+
+    item._visualLatLng = index === 0
+      ? [Number(item.latitude), Number(item.longitude)]
+      : offsetLatLng(item.latitude, item.longitude, index);
+
+    occupied.set(key, index + 1);
+  }
+
+  tickets.forEach(assignVisualPoint);
+  mobileEvents.forEach(assignVisualPoint);
+}
+
+function getVisualLatLng(item) {
+  return item._visualLatLng || [Number(item.latitude), Number(item.longitude)];
+}
+
+
+function renderTicket(ticket) {
+
+  if (!isValidCoordinate(ticket.latitude, ticket.longitude)) return;
+
+  const icon = getTicketIcon(ticket);
+  const latLng = getVisualLatLng(ticket);
+
+  const tooltip = `${ticket.state || "TICKET"} · ${ticket.title || "SOS móvil"}`;
+
+  if (!mobileMarkers[ticket.id]) {
+
+    mobileMarkers[ticket.id] = L.marker(
+      latLng,
+      {
+        icon,
+        pane: "ticketsPane",
+        zIndexOffset: 10000,
+        riseOnHover: true
+      }
+    ).addTo(map);
+
+    mobileMarkers[ticket.id].on(
+      "click",
+      () => openTicketPanel(ticket.id)
+    );
+
+  } else {
+
+    mobileMarkers[ticket.id].setLatLng(latLng);
+    mobileMarkers[ticket.id].setIcon(icon);
+    mobileMarkers[ticket.id].setZIndexOffset(10000);
+  }
+
+  mobileMarkers[ticket.id].bindTooltip(tooltip, {
+    direction: "top",
+    offset: [0, -28],
+    opacity: 0.95
+  });
+}
+
+
+function getMobileEventIcon(event) {
+  const cssClass = event.state === "ACKNOWLEDGED"
+    ? "mobile-sos-ack"
+    : "mobile-sos-active";
+
+  return L.divIcon({
+    className: "",
+    html: `<div class="${cssClass}">📱</div>`,
+    iconSize: [52, 52],
+    iconAnchor: [26, 26]
+  });
+}
+
+function renderMobileEvent(event) {
+  if (!isValidCoordinate(event.latitude, event.longitude)) return;
+
+  const icon = getMobileEventIcon(event);
+  const key = event.id;
+  const latLng = getVisualLatLng(event);
+
+  const stateText = event.state === "ACKNOWLEDGED"
+    ? '<span style="color:#ca8a04;font-weight:bold;">ACKNOWLEDGED</span>'
+    : '<span style="color:#dc2626;font-weight:bold;">ACTIVE</span>';
+
+  const popup = `
+    <strong>📱 Alerta móvil sin ticket</strong><br>
+    Evento: ${event.id}<br>
+    Usuario: ${event.name || "Usuario móvil"}<br>
+    Estado: ${stateText}<br>
+    Precisión: ${event.accuracy ?? "-"} m<br>
+    Creada: ${event.created_at ?? "-"}<br>
+    Latitud real: ${event.latitude}<br>
+    Longitud real: ${event.longitude}<br>
+    ${event._visualLatLng ? "<small>Marcador desplazado visualmente para evitar traslape.</small><br>" : ""}
+    ${event.state === "ACTIVE"
+      ? `<br><button class="btn-siren btn-ack" onclick="ackMobileSos('${event.id}')">✅ Reconocer alerta móvil</button>`
+      : ""
+    }
+  `;
+
+  if (!mobileEventMarkers[key]) {
+    mobileEventMarkers[key] = L.marker(
+      latLng,
+      {
+        icon,
+        pane: "ticketsPane",
+        zIndexOffset: 11000,
+        riseOnHover: true
+      }
+    ).addTo(map);
+  } else {
+    mobileEventMarkers[key].setLatLng(latLng);
+    mobileEventMarkers[key].setIcon(icon);
+    mobileEventMarkers[key].setZIndexOffset(11000);
+  }
+
+  mobileEventMarkers[key].bindPopup(popup);
+  mobileEventMarkers[key].bindTooltip(`📱 ${event.state || "MOBILE SOS"}`, {
+    direction: "top",
+    offset: [0, -28],
+    opacity: 0.95
+  });
+}
+
+
+function renderResolver(resolver) {
+
+const popup = `
+	<strong>👮 ${resolver.full_name}</strong><br>
+	Estado: ${resolver.status}<br>
+	Teléfono: ${resolver.phone ?? "-"}<br>
+	Última actualización: ${resolver.updated_at}
+`;
+
+const icon = getResolverIcon(resolver);
+
+if (!resolverMarkers[resolver.id]) {
+
+	resolverMarkers[resolver.id] = L.marker(
+			[resolver.latitude, resolver.longitude],
+			{ icon, pane: "resolversPane", zIndexOffset: 3000 }
+			).addTo(map);
+
+} else {
+
+	resolverMarkers[resolver.id].setLatLng([
+			resolver.latitude,
+			resolver.longitude
+	]);
+
+	resolverMarkers[resolver.id].setIcon(icon);
+	resolverMarkers[resolver.id].setZIndexOffset(3000);
+}
+
+resolverMarkers[resolver.id].bindPopup(popup);
+}
+
+function closeTicketPanel(event) {
+
+if (event) {
+	event.stopPropagation();
+	event.preventDefault();
+}
+
+document
+	.getElementById("ticketPanel")
+	.classList.add("hidden");
+}
+
+
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (v) => v * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+
+async function activateNearestSiren() {
+
+  if (!selectedTicket) {
+    alert("No hay ticket seleccionado");
+    return;
+  }
+
+  if (!currentSirens.length) {
+    alert("No hay sirenas disponibles");
+    return;
+  }
+
+  const nearest = currentSirens
+    .map(siren => ({
+      ...siren,
+      distance: distanceMeters(
+        Number(selectedTicket.latitude),
+        Number(selectedTicket.longitude),
+        Number(siren.latitude),
+        Number(siren.longitude)
+      )
+    }))
+    .sort((a, b) => a.distance - b.distance)[0];
+
+  const ok = confirm(
+    `¿Activar la sirena más cercana?\n\n${nearest.name}\nDistancia aproximada: ${Math.round(nearest.distance)} m`
+  );
+
+  if (!ok) return;
+
+  const res = await fetch(SIREN_ACTIVATE_URL, {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify({
+      siren_id: nearest.id,
+      duration_seconds: 60
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.status === "ok") {
+    await loadMapState();
+    alert(`Sirena activada: ${nearest.name}`);
+  } else {
+    alert("No fue posible activar la sirena");
+  }
+}
+
+
+
+
+
+function formatDuration(ms) {
+
+if (!ms || ms < 0) return "-";
+
+const totalSeconds = Math.floor(ms / 1000);
+
+const hours = Math.floor(totalSeconds / 3600);
+const minutes = Math.floor((totalSeconds % 3600) / 60);
+const seconds = totalSeconds % 60;
+
+if (hours > 0) {
+return `${hours}h ${minutes}m`;
+}
+
+return `${minutes}m ${seconds}s`;
+}
+
+function getSlaColor(minutes) {
+
+if (minutes < 5) {
+return "#16a34a";
+}
+
+if (minutes < 10) {
+return "#ea580c";
+}
+
+return "#dc2626";
+}
+
+
+
+
+function shortTicketId(ticketId) {
+  if (!ticketId) return "-";
+  return "#" + String(ticketId).slice(0, 8).toUpperCase();
+}
+
+async function copyTicketId(ticketId) {
+  try {
+    await navigator.clipboard.writeText(ticketId);
+    alert("Ticket copiado");
+  } catch (error) {
+    alert("No fue posible copiar el ticket");
+  }
+}
+
+function getActionMetadata(action) {
+  if (!action || !action.metadata) return {};
+
+  if (typeof action.metadata === "object") {
+    return action.metadata;
+  }
+
+  try {
+    return JSON.parse(action.metadata);
+  } catch (error) {
+    return {};
+  }
+}
+
+function getTicketCreatedMetadata(actions) {
+  const created = (actions || []).find(a => a.action_type === "TICKET_CREATED");
+  return getActionMetadata(created);
+}
+
+function extractPhoneFromText(text) {
+  const value = String(text || "");
+  const match = value.match(/(?:\+?56)?\s*9[\s\-]?[0-9]{4}[\s\-]?[0-9]{4}/);
+  if (!match) return "";
+
+  const digits = match[0].replace(/\D/g, "");
+
+  if (digits.startsWith("56")) {
+    return "+" + digits;
+  }
+
+  if (digits.startsWith("9") && digits.length === 9) {
+    return "+56" + digits;
+  }
+
+  return match[0];
+}
+
+function cleanPhoneForTel(phone) {
+  return String(phone || "").replace(/[^+0-9]/g, "");
+}
+
+function callDirectPhone(phone) {
+  const clean = cleanPhoneForTel(phone);
+  if (!clean) {
+    alert("Este botón físico no tiene teléfono registrado");
+    return;
+  }
+
+  window.location.href = `tel:${clean}`;
+}
+
+async function registerOperatorCall(mode) {
+  if (!selectedTicket) {
+    alert("No hay ticket seleccionado");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/call-start`, {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify({
+        mode,
+        sender_role: "OPERATOR",
+        sender_name: "Central SOS"
+      })
+    });
+
+    if (!res.ok) throw new Error("Error HTTP " + res.status);
+    await openTicketPanel(selectedTicket.id);
+    alert(mode === "voice" ? "Solicitud de llamada enviada al vecino" : "Solicitud de videollamada enviada al vecino");
+  } catch (error) {
+    console.error(error);
+    alert("No se pudo registrar la gestión de llamada");
+  }
+}
+
+function renderCommunications(actions) {
+  const communicationActions = (actions || []).filter(a =>
+    ["MESSAGE_TEXT", "MEDIA_AUDIO", "MEDIA_VIDEO", "CALL_VOICE", "CALL_VIDEO", "CALL_ACCEPTED", "CALL_REJECTED"].includes(a.action_type)
+  );
+
+  if (communicationActions.length === 0) {
+    return "Sin comunicaciones todavía";
+  }
+
+  return communicationActions.map(action => {
+    const meta = getActionMetadata(action);
+    const date = new Date(action.created_at).toLocaleString();
+
+    if (action.action_type === "MESSAGE_TEXT") {
+      return `
+        <div class="comm-card">
+          <strong>💬 Mensaje de texto</strong><br>
+          ${meta.message || action.description || "-"}
+          <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
+        </div>
+      `;
+    }
+
+    if (action.action_type === "MEDIA_AUDIO") {
+      return `
+        <div class="comm-card">
+          <strong>🎙️ Audio recibido</strong><br>
+          <audio controls src="${meta.media_url || ""}"></audio>
+          <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
+        </div>
+      `;
+    }
+
+    if (action.action_type === "MEDIA_VIDEO") {
+      return `
+        <div class="comm-card">
+          <strong>📹 Video recibido</strong><br>
+          <video controls playsinline src="${meta.media_url || ""}"></video>
+          <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
+        </div>
+      `;
+    }
+
+    if (action.action_type === "CALL_ACCEPTED" || action.action_type === "CALL_REJECTED") {
+      const accepted = action.action_type === "CALL_ACCEPTED";
+      return `
+        <div class="comm-card">
+          <strong>${accepted ? "✅" : "❌"} ${accepted ? "Comunicación aceptada" : "Comunicación rechazada"}</strong><br>
+          ${action.description || "Respuesta del vecino"}
+          <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
+        </div>
+      `;
+    }
+
+    const mode = action.action_type === "CALL_VOICE" ? "voz" : "video";
+    const fromCentral = action.actor_role === "OPERATOR" || meta.direction === "central_to_neighbor";
+    return `
+      <div class="comm-card">
+        <strong>${action.action_type === "CALL_VOICE" ? "📞" : "🎥"} ${fromCentral ? "Solicitud enviada al teléfono del vecino" : "Solicitud recibida desde vecino"}</strong><br>
+        ${action.description || "Solicitud de comunicación"}
+        <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function openTicketPanel(ticketId) {
+
+try {
+
+const res = await fetch(
+		`${TICKET_URL}/${ticketId}`,
+		{ headers: authHeaders() }
+		);
+
+const data = await res.json();
+
+const ticket = data.ticket;
+ selectedTicket = ticket;	
+const now = Date.now();
+
+const createdAt = new Date(ticket.created_at).getTime();
+
+const assignedAt = ticket.assigned_at
+	? new Date(ticket.assigned_at).getTime()
+	: null;
+
+const resolvedAt = ticket.resolved_at
+	? new Date(ticket.resolved_at).getTime()
+	: null;
+
+const totalElapsed = now - createdAt;
+
+const assignmentTime =
+	assignedAt
+	? assignedAt - createdAt
+	: null;
+
+const resolutionTime =
+	resolvedAt
+	? resolvedAt - createdAt
+	: null;
+
+const elapsedMinutes = totalElapsed / 60000;
+
+const slaColor = getSlaColor(elapsedMinutes);
+
+
+
+
+
+
+const shortId = shortTicketId(ticket.id);
+const sourceEventId = ticket.source_event_id || "-";
+
+const communicationHtml = renderCommunications(data.actions);
+const ticketMeta = getTicketCreatedMetadata(data.actions);
+const isPhysicalDevice = isPhysicalSosTicket(ticket);
+const physicalDeviceName = ticketMeta.device_name || ticketMeta.name || ticket.title || "Botón SOS físico";
+const physicalDeviceId = ticketMeta.platform_id || ticketMeta.device_id || ticketMeta.ident || ticket.source_event_id || "-";
+const physicalDeviceIdent = ticketMeta.ident || "-";
+const physicalDevicePhone = ticketMeta.device_phone || ticketMeta.phone || extractPhoneFromText(ticket.description) || "";
+const physicalDeviceAddress = ticketMeta.registered_address || ticket.description || "-";
+const physicalPhoneClean = cleanPhoneForTel(physicalDevicePhone);
+
+const physicalDeviceHtml = isPhysicalDevice
+  ? `
+<div class="ticket-content-section" style="background:#fff7ed;">
+  <strong>Botón físico SOS:</strong><br>
+  ${physicalDeviceName}<br>
+  <strong>ID:</strong> ${physicalDeviceId}<br>
+  <strong>Ident:</strong> ${physicalDeviceIdent}<br>
+  📞 ${physicalDevicePhone || "Sin teléfono registrado"}<br>
+  📍 ${physicalDeviceAddress || "-"}
+  <div class="ticket-actions" style="margin-top:12px;">
+    ${physicalPhoneClean
+      ? `<button onclick="callDirectPhone('${physicalPhoneClean}')">📞 Llamar directo al botón</button>`
+      : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono registrado</button>`
+    }
+  </div>
+  <div style="font-size:13px;color:#6b7280;margin-top:8px;line-height:1.35;">
+    Este botón físico no tiene interfaz de usuario. La comunicación disponible es llamada directa al número asociado.
+  </div>
+</div>
+`
+  : "";
+
+const neighborHtml = isPhysicalDevice
+  ? physicalDeviceHtml
+  : `
+<div class="ticket-content-section">
+<strong>Vecino:</strong><br>
+${ticket.citizen_name || "-"}<br>
+📞 ${ticket.citizen_phone || "-"}<br>
+📍 ${ticket.declared_address || "-"}
+</div>
+`;
+
+const resolverActionsHtml = isPhysicalDevice
+  ? `
+<button onclick="activateNearestSiren()">
+  🚨 Activar sirena
+</button>
+${physicalPhoneClean
+  ? `<button onclick="callDirectPhone('${physicalPhoneClean}')">📞 Llamar directo</button>`
+  : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono</button>`
+}
+<div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
+  Caso generado por botón físico. No se envían solicitudes internas a PWA; usar llamada directa si hay teléfono asociado.
+</div>
+`
+  : `
+<button onclick="activateNearestSiren()">
+  🚨 Activar sirena
+</button>
+
+<div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
+  Llamadas y videollamadas internas deshabilitadas temporalmente hasta integración WA-CENTER/WebRTC.
+  Por ahora usar texto, audio, evidencia y gestión del resolutor.
+</div>
+`;
+
+
+document.getElementById(
+		"ticketTitle"
+		).innerHTML = `
+<div>
+  <div>🚨 ${ticket.title}</div>
+  <div style="font-size:14px;color:#6b7280;font-weight:normal;">
+    Ticket ${shortId}
+  </div>
+</div>
+`;
+
+const contactsHtml =
+	data.emergency_contacts
+	.map(c => `
+			<div class="contact-card">
+			<strong>${c.name}</strong><br>
+			${c.relationship}<br>
+			📞 ${c.phone}
+			</div>
+			`)
+	.join("");
+
+const notesHtml =
+	data.notes
+	.map(n => `
+			<div class="timeline-item">
+			<div>${n.note}</div>
+			<div class="timeline-date">
+			${n.author_name || "-"} ·
+			${new Date(n.created_at).toLocaleString()}
+			</div>
+			</div>
+			`)
+	.join("");
+
+const actionsHtml =
+	data.actions
+	.map(a => `
+			<div class="timeline-item">
+			<strong>${a.action_type}</strong><br>
+			${a.description}
+			<div class="timeline-date">
+			${new Date(a.created_at).toLocaleString()}
+			</div>
+			</div>
+			`)
+	.join("");
+
+
+document.getElementById(
+		"ticketContent"
+	).innerHTML = `
+<div class="ticket-content-section">
+  <div class="ticket-id-box">
+    <strong>Ticket:</strong> ${shortId}<br>
+    <strong>ID completo:</strong><br>
+    <span style="font-size:12px;color:#6b7280;word-break:break-all;">
+      ${ticket.id}
+    </span><br><br>
+    <strong>Estado:</strong> ${ticket.state}<br>
+    <strong>Origen:</strong> ${ticket.source_type || "-"}<br>
+    <strong>Evento origen:</strong><br>
+    <span style="font-size:12px;color:#6b7280;word-break:break-all;">
+      ${sourceEventId}
+    </span>
+    <br><br>
+    <button
+      onclick="copyTicketId('${ticket.id}')"
+      style="border:none;border-radius:8px;padding:8px 12px;background:#374151;color:white;cursor:pointer;"
+    >
+      📋 Copiar ticket
+    </button>
+  </div>
+</div>
+
+<div class="ticket-content-section">
+
+<strong>SLA</strong><br><br>
+
+<div style="color:${slaColor}; font-size:18px; font-weight:bold;">
+⏱️ ${formatDuration(totalElapsed)}
+</div>
+
+<br>
+
+🎯 Asignación:
+${formatDuration(assignmentTime)}
+
+<br>
+
+✅ Resolución:
+${formatDuration(resolutionTime)}
+
+</div>
+
+
+
+${neighborHtml}
+
+<div class="ticket-content-section">
+<strong>Resolutor:</strong><br>
+👮 ${ticket.resolver_name || "Sin asignar"}
+
+<div class="ticket-actions">
+
+${resolverActionsHtml}
+
+	</div>
+	</div>
+
+
+	<div class="ticket-content-section">
+	<strong>Contactos de emergencia</strong>
+	${contactsHtml || "Sin contactos"}
+</div>
+
+	<div class="ticket-content-section">
+	<strong>Comunicaciones</strong>
+	${communicationHtml}
+</div>
+
+	<div class="ticket-content-section">
+	<strong>Notas</strong>
+	${notesHtml || "Sin notas"}
+</div>
+
+	<div class="ticket-content-section">
+	<strong>Historial</strong>
+	${actionsHtml}
+</div>
+	`;
+
+document
+	.getElementById("ticketPanel")
+	.classList.remove("hidden");
+
+} catch (error) {
+
+console.error(error);
+
+alert("No fue posible cargar el ticket");
+}
+}
+
+
+async function loadMapState() {
+try {
+const [dashboardRes, publicRes] = await Promise.all([
+fetch(MAP_STATE_URL, { headers: authHeaders() }),
+fetch(PUBLIC_MAP_STATE_URL)
+]);
+
+const data = await dashboardRes.json();
+const publicData = await publicRes.json();
+
+const devices = data.devices || [];
+const sirens = data.sirens || [];
+      currentSirens = sirens;
+const tickets = data.tickets || [];
+const resolvers = data.resolvers || [];
+const publicMobileEvents = publicData.mobile_events || [];
+const ticketSourceIds = new Set(
+  tickets
+    .map(t => t.source_event_id)
+    .filter(Boolean)
+);
+
+const orphanMobileEvents = publicMobileEvents.filter(
+  event => !ticketSourceIds.has(event.id)
+);
+
+
+const visibleTickets = tickets.filter(
+  t => !["CLOSED", "CANCELLED", "RESOLVED"].includes(t.state)
+);
+
+// Antitraslape visual: tickets y alertas móviles siempre visibles arriba.
+applyVisualOffsets(devices, sirens, resolvers, visibleTickets, orphanMobileEvents);
+
+
+const activeSos = visibleTickets.filter(t =>
+  !["RESOLVED", "CLOSED", "CANCELLED"].includes(t.state)
+).length;
+
+const recentSos = devices.filter(d =>
+  d.sos_state === "RECENT"
+).length;
+
+const mobileTicketCount = visibleTickets.filter(
+  t => t.source_type === "MOBILE_APP"
+).length;
+
+const mobileSos = mobileTicketCount + orphanMobileEvents.length;
+
+
+
+document.getElementById("status").textContent = "conectado";
+document.getElementById("status").className = "online";
+document.getElementById("count").textContent = devices.length;
+document.getElementById("activeSosCount").textContent = activeSos;
+document.getElementById("recentSosCount").textContent = recentSos;
+
+document.getElementById("mobileSosCount").textContent = mobileSos;
+
+
+document.getElementById("sirenCount").textContent = sirens.length;
+document.getElementById("lastUpdate").textContent =
+	new Date().toLocaleTimeString();
+document.getElementById("totalNodes").textContent =
+	devices.length +
+	visibleTickets.length +
+	orphanMobileEvents.length +
+	sirens.length +
+resolvers.length;
+
+devices.forEach(renderDevice);
+sirens.forEach(renderSiren);
+visibleTickets.forEach(renderTicket);
+orphanMobileEvents.forEach(renderMobileEvent);
+resolvers.forEach(renderResolver);
+
+if (!userMovedMap) {
+const bounds = [];
+
+visibleTickets.forEach(t => {
+const latLng = getVisualLatLng(t);
+bounds.push(latLng);
+});
+
+orphanMobileEvents.forEach(event => {
+const latLng = getVisualLatLng(event);
+bounds.push(latLng);
+});
+
+resolvers.forEach(r => {
+bounds.push([r.latitude, r.longitude]);
+});
+
+devices.forEach(d => {
+bounds.push([d.latitude, d.longitude]);
+});
+
+sirens.forEach(s => {
+bounds.push([s.latitude, s.longitude]);
+});
+
+if (bounds.length > 0) {
+map.fitBounds(bounds, {
+padding: [50, 50],
+maxZoom: 17
+});
+
+mapInitialized = true;
+} else if (!mapInitialized) {
+map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+mapInitialized = true;
+}
+}
+
+const activeTicketKeys = new Set(
+visibleTickets.map(t => t.id)
+);
+
+Object.keys(mobileMarkers).forEach(key => {
+if (!activeTicketKeys.has(key)) {
+map.removeLayer(mobileMarkers[key]);
+delete mobileMarkers[key];
+}
+});
+
+const activeMobileEventKeys = new Set(
+orphanMobileEvents.map(event => event.id)
+);
+
+Object.keys(mobileEventMarkers).forEach(key => {
+if (!activeMobileEventKeys.has(key)) {
+map.removeLayer(mobileEventMarkers[key]);
+delete mobileEventMarkers[key];
+}
+});
+
+
+
+
+
+
+
+
+} catch (err) {
+console.error(err);
+document.getElementById("status").textContent = "error";
+document.getElementById("status").className = "offline";
+}
+}
+
+document.getElementById("panelLoginButton").addEventListener("click", panelLogin);
+document.getElementById("panelLoginPhone").addEventListener("keydown", event => {
+if (event.key === "Enter") panelLogin();
+});
+document.getElementById("panelLogoutButton").addEventListener("click", logoutPanel);
+checkPanelSession();
+</script>
+</body>
+</html>
