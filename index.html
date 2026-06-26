@@ -493,10 +493,126 @@ color: #6b7280;
 margin-top: 6px;
 }
 
+
+
+.login-overlay {
+position: fixed;
+inset: 0;
+z-index: 5000;
+background: rgba(15,23,42,.82);
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 24px;
+backdrop-filter: blur(6px);
+}
+
+.login-overlay.hidden {
+display: none;
+}
+
+.login-card {
+width: min(520px, 100%);
+background: white;
+border-radius: 22px;
+box-shadow: 0 20px 55px rgba(0,0,0,.35);
+padding: 28px;
+}
+
+.login-card h2 {
+margin: 8px 0 8px;
+font-size: 32px;
+color: #111827;
+}
+
+.login-card p {
+color: #4b5563;
+font-size: 16px;
+line-height: 1.45;
+font-weight: 700;
+}
+
+.login-card label {
+display: block;
+font-weight: 900;
+color: #374151;
+margin: 16px 0 8px;
+}
+
+.login-card input {
+width: 100%;
+border: 2px solid #d1d5db;
+border-radius: 14px;
+padding: 14px;
+font-size: 18px;
+}
+
+.login-card button {
+width: 100%;
+margin-top: 14px;
+border: none;
+border-radius: 14px;
+padding: 14px;
+background: #16a34a;
+color: white;
+font-size: 18px;
+font-weight: 900;
+cursor: pointer;
+}
+
+.login-error {
+margin-top: 12px;
+color: #b91c1c;
+font-weight: 900;
+}
+
+.login-hint {
+font-size: 14px;
+color: #6b7280;
+font-weight: 800;
+margin-top: 12px;
+}
+
+.operator-pill {
+margin-top: 10px;
+padding: 8px 10px;
+border-radius: 999px;
+background: #e0f2fe;
+color: #075985;
+font-size: 13px;
+font-weight: 900;
+text-align: center;
+}
+
+.btn-logout {
+margin-top: 8px;
+background: #374151;
+color: white;
+border: 0;
+border-radius: 10px;
+padding: 8px 10px;
+font-weight: 900;
+cursor: pointer;
+width: 100%;
+}
+
 </style>
 </head>
 
 <body>
+
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <div class="panel-title">Sistema SOS Municipal</div>
+    <h2>Panel de control</h2>
+    <p>Acceso restringido para usuarios con rol <strong>OPERATOR</strong> o <strong>ADMIN</strong>.</p>
+    <label>Teléfono usuario operador/admin</label>
+    <input id="panelLoginPhone" placeholder="+569XXXXXXXX" autocomplete="tel" />
+    <button id="panelLoginButton">Entrar al panel</button>
+    <div id="panelLoginError" class="login-error"></div>
+    <div class="login-hint">Para demo, el acceso se valida por teléfono registrado. Luego conectamos OTP/WhatsApp.</div>
+  </div>
+</div>
 
 <div class="panel">
 
@@ -509,6 +625,9 @@ class="logo-vsti"
 <div class="panel-title">
 Sistema SOS Municipal
 </div>
+
+<div id="operatorSession" class="operator-pill" style="display:none"></div>
+<button id="panelLogoutButton" class="btn-logout" style="display:none">Cerrar sesión</button>
 
 <div class="panel-small">
 Estado:
@@ -578,6 +697,132 @@ const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
 const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
 const ACK_SOS_URL = "https://sos.vsti.cl/public/devices/ack-sos";
 const ACK_MOBILE_SOS_URL = "https://sos.vsti.cl/public/mobile/ack";
+
+const PANEL_TOKEN_KEY = "sos_control_panel_session_token";
+let panelSessionUser = null;
+let mapUpdateInterval = null;
+
+function getPanelToken() {
+return localStorage.getItem(PANEL_TOKEN_KEY) || "";
+}
+
+function setPanelToken(token) {
+localStorage.setItem(PANEL_TOKEN_KEY, token);
+}
+
+function clearPanelToken() {
+localStorage.removeItem(PANEL_TOKEN_KEY);
+}
+
+function authHeaders() {
+const token = getPanelToken();
+return token ? { "Authorization": `Bearer ${token}` } : {};
+}
+
+function jsonHeaders() {
+return { "Content-Type": "application/json", ...authHeaders() };
+}
+
+function showLoginOverlay(message = "") {
+document.getElementById("loginOverlay").classList.remove("hidden");
+document.getElementById("panelLoginError").textContent = message;
+document.getElementById("operatorSession").style.display = "none";
+document.getElementById("panelLogoutButton").style.display = "none";
+}
+
+function showControlPanel(user) {
+panelSessionUser = user || panelSessionUser;
+document.getElementById("loginOverlay").classList.add("hidden");
+const pill = document.getElementById("operatorSession");
+pill.style.display = "block";
+pill.textContent = `${panelSessionUser?.full_name || "Operador"} · ${panelSessionUser?.role || "OPERATOR"}`;
+document.getElementById("panelLogoutButton").style.display = "block";
+}
+
+async function panelLogin() {
+const phone = document.getElementById("panelLoginPhone").value.trim();
+const errorEl = document.getElementById("panelLoginError");
+const button = document.getElementById("panelLoginButton");
+errorEl.textContent = "";
+
+if (!phone) {
+errorEl.textContent = "Ingresa el teléfono del usuario operador o administrador.";
+return;
+}
+
+try {
+button.disabled = true;
+button.textContent = "Entrando...";
+
+const res = await fetch("https://sos.vsti.cl/auth/panel-login", {
+method: "POST",
+headers: jsonHeaders(),
+body: JSON.stringify({ phone, panel_type: "CONTROL_CENTER" })
+});
+
+const data = await res.json();
+
+if (!res.ok || data.status !== "ok") {
+throw new Error(data.message || "No fue posible ingresar");
+}
+
+setPanelToken(data.token);
+showControlPanel(data.user);
+startMapUpdates();
+} catch (error) {
+console.error(error);
+clearPanelToken();
+errorEl.textContent = error.message;
+} finally {
+button.disabled = false;
+button.textContent = "Entrar al panel";
+}
+}
+
+async function checkPanelSession() {
+const token = getPanelToken();
+if (!token) {
+showLoginOverlay();
+return;
+}
+
+try {
+const res = await fetch("https://sos.vsti.cl/auth/session", {
+headers: authHeaders()
+});
+const data = await res.json();
+
+if (!res.ok || data.status !== "ok") {
+throw new Error(data.message || "Sesión inválida");
+}
+
+if (!["OPERATOR", "ADMIN"].includes(data.user.role)) {
+throw new Error("Este panel requiere rol OPERATOR o ADMIN.");
+}
+
+showControlPanel(data.user);
+startMapUpdates();
+} catch (error) {
+console.error(error);
+clearPanelToken();
+showLoginOverlay(error.message);
+}
+}
+
+function logoutPanel() {
+clearPanelToken();
+if (mapUpdateInterval) {
+clearInterval(mapUpdateInterval);
+mapUpdateInterval = null;
+}
+showLoginOverlay("Sesión cerrada.");
+}
+
+function startMapUpdates() {
+if (mapUpdateInterval) return;
+loadMapState();
+mapUpdateInterval = setInterval(loadMapState, 3000);
+}
 
 const DEFAULT_CENTER = [-33.01895, -71.55090];
 const DEFAULT_ZOOM = 15;
@@ -680,7 +925,7 @@ if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
 
 const res = await fetch(SIREN_ACTIVATE_URL, {
 method: "POST",
-headers: { "Content-Type": "application/json" },
+headers: jsonHeaders(),
 body: JSON.stringify({
 siren_id: sirenId,
 duration_seconds: 60
@@ -699,7 +944,7 @@ alert("Error activando sirena");
 async function deactivateSiren(sirenId) {
 const res = await fetch(SIREN_DEACTIVATE_URL, {
 method: "POST",
-headers: { "Content-Type": "application/json" },
+headers: jsonHeaders(),
 body: JSON.stringify({ siren_id: sirenId })
 });
 
@@ -715,9 +960,7 @@ alert("Error apagando sirena");
 async function ackSos(deviceId) {
 const res = await fetch(ACK_SOS_URL, {
 method: "POST",
-headers: {
-"Content-Type": "application/json"
-},
+headers: jsonHeaders(),
 body: JSON.stringify({
 device_id: deviceId
 })
@@ -735,9 +978,7 @@ alert("No fue posible reconocer el SOS");
 async function ackMobileSos(eventId) {
 const res = await fetch(ACK_MOBILE_SOS_URL, {
 method: "POST",
-headers: {
-"Content-Type": "application/json"
-},
+headers: jsonHeaders(),
 body: JSON.stringify({
 event_id: eventId,
 operator: "central-web"
@@ -1187,9 +1428,7 @@ async function activateNearestSiren() {
 
   const res = await fetch(SIREN_ACTIVATE_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: jsonHeaders(),
     body: JSON.stringify({
       siren_id: nearest.id,
       duration_seconds: 60
@@ -1317,7 +1556,7 @@ async function registerOperatorCall(mode) {
   try {
     const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/call-start`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: jsonHeaders(),
       body: JSON.stringify({
         mode,
         sender_role: "OPERATOR",
@@ -1405,7 +1644,8 @@ async function openTicketPanel(ticketId) {
 try {
 
 const res = await fetch(
-		`${TICKET_URL}/${ticketId}`
+		`${TICKET_URL}/${ticketId}`,
+		{ headers: authHeaders() }
 		);
 
 const data = await res.json();
@@ -1672,7 +1912,7 @@ alert("No fue posible cargar el ticket");
 async function loadMapState() {
 try {
 const [dashboardRes, publicRes] = await Promise.all([
-fetch(MAP_STATE_URL),
+fetch(MAP_STATE_URL, { headers: authHeaders() }),
 fetch(PUBLIC_MAP_STATE_URL)
 ]);
 
@@ -1819,8 +2059,12 @@ document.getElementById("status").className = "offline";
 }
 }
 
-loadMapState();
-setInterval(loadMapState, 3000);
+document.getElementById("panelLoginButton").addEventListener("click", panelLogin);
+document.getElementById("panelLoginPhone").addEventListener("keydown", event => {
+if (event.key === "Enter") panelLogin();
+});
+document.getElementById("panelLogoutButton").addEventListener("click", logoutPanel);
+checkPanelSession();
 </script>
 </body>
 </html>
