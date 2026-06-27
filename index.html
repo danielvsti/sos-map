@@ -702,6 +702,55 @@ width: 100%;
   background: #1d4ed8;
 }
 
+
+
+/* v28.6 - filtros visibles del mapa operacional */
+.map-filter-button {
+  position: absolute;
+  top: 28px;
+  right: 32px;
+  z-index: 1200;
+  border: 0;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  padding: 12px 18px;
+  font-size: 17px;
+  font-weight: 800;
+  box-shadow: 0 8px 26px rgba(15,23,42,.28);
+  cursor: pointer;
+}
+.map-filter-panel {
+  position: absolute;
+  top: 82px;
+  right: 32px;
+  z-index: 1200;
+  width: 330px;
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  background: rgba(255,255,255,.96);
+  border: 1px solid #dbe3ef;
+  border-radius: 22px;
+  box-shadow: 0 16px 55px rgba(15,23,42,.22);
+  padding: 16px;
+  backdrop-filter: blur(8px);
+  font-size: 15px;
+}
+.map-filter-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px; }
+.map-filter-head strong { display:block; font-size:20px; color:#111827; }
+.map-filter-head span { display:block; font-size:13px; color:#64748b; margin-top:2px; }
+.map-filter-close { border:0; background:#eef2f7; border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:18px; }
+.map-filter-section { border-top:1px solid #e5e7eb; padding-top:12px; margin-top:12px; }
+.map-filter-section h4 { margin:0 0 8px; color:#334155; font-size:13px; text-transform:uppercase; letter-spacing:.12em; }
+.map-filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.map-filter-check { display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:8px 9px; cursor:pointer; }
+.map-filter-check input { transform:scale(1.1); }
+.map-filter-actions { display:flex; gap:8px; margin-top:14px; }
+.map-filter-actions button { flex:1; border:0; border-radius:12px; padding:10px; font-weight:800; cursor:pointer; }
+.map-filter-actions .primary { background:#2563eb; color:#fff; }
+.map-filter-actions .secondary { background:#e5e7eb; color:#334155; }
+.map-filter-summary { margin-top:10px; color:#475569; font-weight:700; font-size:13px; }
+
 </style>
 </head>
 
@@ -779,6 +828,63 @@ Total nodos:
 
 <div id="map"></div>
 <div id="boundaryBadge" class="boundary-badge hidden">Límite operacional: <strong>sin cargar</strong></div>
+
+<button id="mapFilterButton" class="map-filter-button" type="button">🧭 Filtros</button>
+<div id="mapFilterPanel" class="map-filter-panel hidden" role="dialog" aria-label="Filtros de mapa">
+  <div class="map-filter-head">
+    <div><strong>Filtros de mapa</strong><span>Tickets, resolutores y activos visibles</span></div>
+    <button id="mapFilterClose" class="map-filter-close" type="button">×</button>
+  </div>
+
+  <div class="map-filter-section">
+    <h4>Estado del ticket</h4>
+    <div class="map-filter-grid">
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketStates.unassigned"> Sin asignar</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketStates.assigned"> Asignados</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketStates.accepted"> Aceptados/en ruta</label>
+    </div>
+  </div>
+
+  <div class="map-filter-section">
+    <h4>Tipo de emergencia</h4>
+    <div class="map-filter-grid">
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.sos"> 🆘 SOS</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.medical"> 🩺 Médica</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.fire"> 🔥 Incendio</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.security"> 🛡️ Seguridad</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.vif"> 🤫 VIF</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.fall"> ⚕️ Caída</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.risk"> ⚠️ Riesgo</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="ticketTypes.other"> ❓ Otro</label>
+    </div>
+  </div>
+
+  <div class="map-filter-section">
+    <h4>Resolutores</h4>
+    <div class="map-filter-grid">
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="resolvers.available"> Disponibles</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="resolvers.busy"> Ocupados</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="resolvers.stale"> GPS antiguo</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="resolvers.offline"> Offline/sin GPS</label>
+    </div>
+  </div>
+
+  <div class="map-filter-section">
+    <h4>Otros activos</h4>
+    <div class="map-filter-grid">
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="show.sirens"> Sirenas</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="show.devices"> Botones físicos</label>
+      <label class="map-filter-check"><input type="checkbox" data-filter-path="show.mobileEvents"> Alertas móviles sin ticket</label>
+    </div>
+  </div>
+
+  <div class="map-filter-actions">
+    <button id="mapFilterAll" class="primary" type="button">Mostrar todo</button>
+    <button id="mapFilterCritical" class="secondary" type="button">Solo críticos</button>
+  </div>
+  <div id="mapFilterSummary" class="map-filter-summary">—</div>
+</div>
+
 
 <div id="ticketPanel" class="ticket-panel hidden">
 <div class="ticket-header">
@@ -935,6 +1041,129 @@ const DEFAULT_CENTER = [-33.01895, -71.55090];
 const DEFAULT_ZOOM = 15;
 let municipalBoundaryLayer = null;
 let lastControlCenter = null;
+
+
+const MAP_FILTERS_KEY = "sos_map_filters_v28_6";
+const DEFAULT_MAP_FILTERS = {
+  ticketStates: { unassigned: true, assigned: true, accepted: true },
+  ticketTypes: { sos: true, medical: true, fire: true, security: true, vif: true, fall: true, risk: true, other: true },
+  resolvers: { available: true, busy: true, stale: true, offline: false },
+  show: { sirens: true, devices: true, mobileEvents: true }
+};
+let mapFilters = loadMapFilters();
+let lastMapFilterStats = null;
+
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function loadMapFilters() {
+  try { return mergeMapFilters(clone(DEFAULT_MAP_FILTERS), JSON.parse(localStorage.getItem(MAP_FILTERS_KEY) || "{}")); }
+  catch { return clone(DEFAULT_MAP_FILTERS); }
+}
+function mergeMapFilters(base, incoming) {
+  Object.keys(incoming || {}).forEach(key => {
+    if (incoming[key] && typeof incoming[key] === "object" && !Array.isArray(incoming[key])) {
+      base[key] = mergeMapFilters(base[key] || {}, incoming[key]);
+    } else {
+      base[key] = incoming[key];
+    }
+  });
+  return base;
+}
+function saveMapFilters() { localStorage.setItem(MAP_FILTERS_KEY, JSON.stringify(mapFilters)); }
+function getByPath(obj, path) { return path.split(".").reduce((acc, part) => acc && acc[part], obj); }
+function setByPath(obj, path, value) {
+  const parts = path.split(".");
+  let cur = obj;
+  parts.slice(0, -1).forEach(part => { cur[part] = cur[part] || {}; cur = cur[part]; });
+  cur[parts[parts.length - 1]] = value;
+}
+function syncMapFilterInputs() {
+  document.querySelectorAll("[data-filter-path]").forEach(input => {
+    input.checked = !!getByPath(mapFilters, input.dataset.filterPath);
+  });
+  updateMapFilterSummary(lastMapFilterStats);
+}
+function ticketCategoryBucket(ticket) {
+  const visual = emergencyVisual(ticket);
+  const label = String(visual.label || "SOS").toUpperCase();
+  if (label === "MED") return "medical";
+  if (label === "INC") return "fire";
+  if (label === "SEG") return "security";
+  if (label === "VIF") return "vif";
+  if (label === "CAÍDA" || label === "CAIDA") return "fall";
+  if (label === "RIESGO") return "risk";
+  if (label === "OTRO") return "other";
+  return "sos";
+}
+function ticketStateBucket(ticket) {
+  const state = String(ticket?.state || "").toUpperCase();
+  const assignmentState = String(ticket?.latest_assignment_state || "").toUpperCase();
+  if (["ACCEPTED", "ACCEPTED_BY_RESOLVER", "EN_ROUTE", "ON_SITE"].includes(state) || ["ACCEPTED", "ACCEPTED_BY_RESOLVER"].includes(assignmentState)) return "accepted";
+  if (ticket?.assigned_resolver_id || ["ASSIGNED"].includes(state)) return "assigned";
+  return "unassigned";
+}
+function ticketPassesMapFilters(ticket) {
+  return !!mapFilters.ticketTypes[ticketCategoryBucket(ticket)] && !!mapFilters.ticketStates[ticketStateBucket(ticket)];
+}
+function resolverFilterBucket(resolver) {
+  const state = resolverDisplayState(resolver);
+  if (state === "AVAILABLE") return "available";
+  if (["BUSY", "EN_ROUTE", "ON_SITE", "BLOCKED_NO_TICKET"].includes(state)) return "busy";
+  if (state === "STALE_GPS") return "stale";
+  return "offline";
+}
+function resolverPassesMapFilters(resolver) { return !!mapFilters.resolvers[resolverFilterBucket(resolver)]; }
+function cleanupMarkers(markerDict, activeKeys) {
+  const active = new Set(activeKeys.map(String));
+  Object.keys(markerDict).forEach(key => {
+    if (!active.has(String(key))) {
+      map.removeLayer(markerDict[key]);
+      delete markerDict[key];
+    }
+  });
+}
+function updateMapFilterSummary(stats) {
+  const el = document.getElementById("mapFilterSummary");
+  if (!el) return;
+  if (!stats) { el.textContent = "Filtros listos."; return; }
+  el.textContent = `Mostrando ${stats.ticketsShown}/${stats.ticketsTotal} tickets · ${stats.resolversShown}/${stats.resolversTotal} resolutores · ${stats.sirensShown}/${stats.sirensTotal} sirenas`;
+}
+function initMapFilters() {
+  const button = document.getElementById("mapFilterButton");
+  const panel = document.getElementById("mapFilterPanel");
+  if (!button || !panel) return;
+  L.DomEvent.disableClickPropagation(panel);
+  L.DomEvent.disableScrollPropagation(panel);
+  L.DomEvent.disableClickPropagation(button);
+
+  button.addEventListener("click", () => panel.classList.toggle("hidden"));
+  document.getElementById("mapFilterClose")?.addEventListener("click", () => panel.classList.add("hidden"));
+  document.querySelectorAll("[data-filter-path]").forEach(input => {
+    input.addEventListener("change", () => {
+      setByPath(mapFilters, input.dataset.filterPath, input.checked);
+      saveMapFilters();
+      loadMapState();
+    });
+  });
+  document.getElementById("mapFilterAll")?.addEventListener("click", () => {
+    mapFilters = clone(DEFAULT_MAP_FILTERS);
+    saveMapFilters();
+    syncMapFilterInputs();
+    loadMapState();
+  });
+  document.getElementById("mapFilterCritical")?.addEventListener("click", () => {
+    mapFilters = clone(DEFAULT_MAP_FILTERS);
+    mapFilters.ticketTypes = { sos: false, medical: true, fire: true, security: true, vif: true, fall: true, risk: true, other: false };
+    mapFilters.ticketStates = { unassigned: true, assigned: true, accepted: false };
+    mapFilters.resolvers = { available: true, busy: true, stale: false, offline: false };
+    mapFilters.show.devices = false;
+    mapFilters.show.mobileEvents = true;
+    saveMapFilters();
+    syncMapFilterInputs();
+    loadMapState();
+  });
+  syncMapFilterInputs();
+}
+
 
 const map = L.map("map").setView(
 	DEFAULT_CENTER,
@@ -2221,19 +2450,34 @@ const orphanMobileEvents = publicMobileEvents.filter(
 );
 
 
-const visibleTickets = tickets.filter(
-  t => !["CLOSED", "CANCELLED", "RESOLVED"].includes(t.state)
+const allOpenTickets = tickets.filter(
+  t => !["CLOSED", "CANCELLED", "RESOLVED"].includes(String(t.state || "").toUpperCase())
 );
+const visibleTickets = allOpenTickets.filter(ticketPassesMapFilters);
+const visibleResolvers = resolvers.filter(resolverPassesMapFilters);
+const visibleSirens = mapFilters.show.sirens ? sirens : [];
+const visibleDevices = mapFilters.show.devices ? devices : [];
+const visibleOrphanMobileEvents = mapFilters.show.mobileEvents ? orphanMobileEvents : [];
+
+lastMapFilterStats = {
+  ticketsShown: visibleTickets.length,
+  ticketsTotal: allOpenTickets.length,
+  resolversShown: visibleResolvers.length,
+  resolversTotal: resolvers.length,
+  sirensShown: visibleSirens.length,
+  sirensTotal: sirens.length
+};
+updateMapFilterSummary(lastMapFilterStats);
 
 // Antitraslape visual: tickets y alertas móviles siempre visibles arriba.
-applyVisualOffsets(devices, sirens, resolvers, visibleTickets, orphanMobileEvents);
+applyVisualOffsets(visibleDevices, visibleSirens, visibleResolvers, visibleTickets, visibleOrphanMobileEvents);
 
 
 const activeSos = visibleTickets.filter(t =>
   !["RESOLVED", "CLOSED", "CANCELLED"].includes(t.state)
 ).length;
 
-const recentSos = devices.filter(d =>
+const recentSos = visibleDevices.filter(d =>
   d.sos_state === "RECENT"
 ).length;
 
@@ -2241,34 +2485,40 @@ const mobileTicketCount = visibleTickets.filter(
   t => t.source_type === "MOBILE_APP"
 ).length;
 
-const mobileSos = mobileTicketCount + orphanMobileEvents.length;
+const mobileSos = mobileTicketCount + visibleOrphanMobileEvents.length;
 
 
 
 document.getElementById("status").textContent = "conectado";
 document.getElementById("status").className = "online";
-document.getElementById("count").textContent = devices.length;
+document.getElementById("count").textContent = visibleDevices.length;
 document.getElementById("activeSosCount").textContent = activeSos;
 document.getElementById("recentSosCount").textContent = recentSos;
 
 document.getElementById("mobileSosCount").textContent = mobileSos;
 
 
-document.getElementById("sirenCount").textContent = sirens.length;
+document.getElementById("sirenCount").textContent = visibleSirens.length;
 document.getElementById("lastUpdate").textContent =
 	new Date().toLocaleTimeString();
 document.getElementById("totalNodes").textContent =
-	devices.length +
+	visibleDevices.length +
 	visibleTickets.length +
-	orphanMobileEvents.length +
-	sirens.length +
-resolvers.length;
+	visibleOrphanMobileEvents.length +
+	visibleSirens.length +
+visibleResolvers.length;
 
-devices.forEach(renderDevice);
-sirens.forEach(renderSiren);
+visibleDevices.forEach(renderDevice);
+visibleSirens.forEach(renderSiren);
 visibleTickets.forEach(renderTicket);
-orphanMobileEvents.forEach(renderMobileEvent);
-resolvers.forEach(renderResolver);
+visibleOrphanMobileEvents.forEach(renderMobileEvent);
+visibleResolvers.forEach(renderResolver);
+
+cleanupMarkers(deviceMarkers, visibleDevices.map(d => d.id));
+cleanupMarkers(sirenMarkers, visibleSirens.map(s => s.id));
+cleanupMarkers(mobileMarkers, visibleTickets.map(t => t.id));
+cleanupMarkers(mobileEventMarkers, visibleOrphanMobileEvents.map(e => e.id));
+cleanupMarkers(resolverMarkers, visibleResolvers.map(r => r.id));
 
 if (!userMovedMap) {
 const focusedOnBoundary = focusMapOnMunicipality(controlCenter, false);
@@ -2279,20 +2529,20 @@ const latLng = getVisualLatLng(t);
 bounds.push(latLng);
 });
 
-orphanMobileEvents.forEach(event => {
+visibleOrphanMobileEvents.forEach(event => {
 const latLng = getVisualLatLng(event);
 bounds.push(latLng);
 });
 
-resolvers.forEach(r => {
+visibleResolvers.forEach(r => {
 bounds.push([r.latitude, r.longitude]);
 });
 
-devices.forEach(d => {
+visibleDevices.forEach(d => {
 bounds.push([d.latitude, d.longitude]);
 });
 
-sirens.forEach(s => {
+visibleSirens.forEach(s => {
 bounds.push([s.latitude, s.longitude]);
 });
 
@@ -2323,7 +2573,7 @@ delete mobileMarkers[key];
 });
 
 const activeMobileEventKeys = new Set(
-orphanMobileEvents.map(event => event.id)
+visibleOrphanMobileEvents.map(event => event.id)
 );
 
 Object.keys(mobileEventMarkers).forEach(key => {
@@ -2352,6 +2602,7 @@ document.getElementById("panelLoginPhone").addEventListener("keydown", event => 
 if (event.key === "Enter") panelLogin();
 });
 document.getElementById("panelLogoutButton").addEventListener("click", logoutPanel);
+initMapFilters();
 checkPanelSession();
 </script>
 </body>
