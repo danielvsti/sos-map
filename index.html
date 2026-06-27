@@ -1739,7 +1739,7 @@ function renderCommunications(actions) {
     const fromCentral = action.actor_role === "OPERATOR" || meta.direction === "central_to_neighbor";
     return `
       <div class="comm-card">
-        <strong>${action.action_type === "CALL_VOICE" ? "📞" : "🎥"} ${fromCentral ? "Solicitud enviada al teléfono del vecino" : "Solicitud recibida desde vecino"}</strong><br>
+        <strong>${action.action_type === "CALL_VOICE" ? "📞" : "🎥"} ${fromCentral ? "Solicitud interna al vecino" : "Solicitud recibida desde vecino"}</strong><br>
         ${action.description || "Solicitud de comunicación"}
         <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
       </div>
@@ -1877,7 +1877,7 @@ ${physicalPhoneClean
   : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono</button>`
 }
 <div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
-  Caso generado por botón físico. No se envían solicitudes internas a PWA; usar llamada directa si hay teléfono asociado.
+  Caso generado por botón físico. No se envían solicitudes internas a PWA; usar protocolo definido por la central si hay teléfono asociado como respaldo.
 </div>
 `
   : `
