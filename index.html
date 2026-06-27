@@ -1450,6 +1450,27 @@ function isPhysicalSosTicket(ticket) {
   );
 }
 
+
+function mapSectorFromCoords(latitude, longitude) {
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "Sector no informado";
+  if (lat > -32.981 && lon < -71.532) return "Reñaca Bajo / Jardín del Mar";
+  if (lat > -32.982 && lon >= -71.532) return "Reñaca Alto";
+  if (lat > -32.999 && lon > -71.510) return "Gómez Carreño / Glorias Navales";
+  if (lat > -33.007 && lon > -71.522) return "Achupallas / Santa Julia";
+  if (lat > -33.009 && lon <= -71.522) return "Santa Inés / Población Vergara";
+  if (lat > -33.024 && lon < -71.545) return "Plan Viña / Libertad";
+  if (lat > -33.026 && lon >= -71.545) return "Miraflores / Chorrillos";
+  if (lat <= -33.035 && lon < -71.545) return "Recreo / Agua Santa";
+  if (lat <= -33.035 && lon >= -71.545) return "Forestal / Nueva Aurora";
+  return "Viña del Mar";
+}
+
+function ticketIncidentSector(ticket) {
+  return ticket?.incident_sector || ticket?.sector_estimado || ticket?.sector_aproximado || mapSectorFromCoords(ticket?.latitude, ticket?.longitude);
+}
+
 function emergencyVisual(ticket) {
   const type = String(ticket?.alert_type || ticket?.emergency_type || "SOS_MANUAL").toUpperCase();
   if (type === "MEDICAL" || type === "MEDICA" || type === "MÉDICA") return { icon: "🩺", label: "MED", css: "ticket-emergency-medical" };
@@ -1703,7 +1724,7 @@ function renderTicket(ticket) {
   const latLng = getVisualLatLng(ticket);
 
   const visual = emergencyVisual(ticket);
-  const tooltip = `${visual.label} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}`;
+  const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}`;
 
   if (!mobileMarkers[ticket.id]) {
 
@@ -2334,6 +2355,9 @@ document.getElementById(
       ${ticket.id}
     </span><br><br>
     <strong>Estado:</strong> ${ticket.state}<br>
+    <strong>Tipo:</strong> ${emergencyVisual(ticket).icon} ${emergencyVisual(ticket).label}<br>
+    <strong>Sector evento:</strong> ${ticketIncidentSector(ticket)}<br>
+    <span style="font-size:12px;color:#6b7280;">Sector estimado por coordenada; pendiente cartografía oficial.</span><br>
     <strong>Origen:</strong> ${ticket.source_type || "-"}<br>
     <strong>Evento origen:</strong><br>
     <span style="font-size:12px;color:#6b7280;word-break:break-all;">
