@@ -88,6 +88,48 @@ border: 3px solid white;
 	font-size: 22px;
 }
 
+.resolver-marker-onsite {
+background: #7c3aed;
+color: white;
+       border-radius: 50%;
+width: 42px;
+height: 42px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-size: 22px;
+}
+
+.resolver-marker-stale {
+background: #f59e0b;
+color: white;
+       border-radius: 50%;
+width: 40px;
+height: 40px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-size: 21px;
+}
+
+.resolver-marker-offline,
+.resolver-marker-invalid {
+background: #6b7280;
+color: white;
+       border-radius: 50%;
+width: 38px;
+height: 38px;
+display: flex;
+	 align-items: center;
+	 justify-content: center;
+border: 3px solid white;
+	font-size: 20px;
+	filter: grayscale(100%);
+	opacity: .78;
+}
+
 .sos-marker-normal {
 background: #15803d;
 color: white;
@@ -1159,24 +1201,53 @@ function getTicketIcon(ticket) {
 }
 
 
+function resolverDisplayState(resolver) {
+  const op = String(resolver.operational_state || resolver.display_status || resolver.status || "").toUpperCase();
+  const gps = String(resolver.gps_state || "").toUpperCase();
+  const accuracy = resolver.accuracy == null ? null : Number(resolver.accuracy);
+  const maxAccuracy = resolver.max_allowed_accuracy_meters == null ? null : Number(resolver.max_allowed_accuracy_meters);
+
+  if (op === "GPS_INVALID" || gps === "INVALID_ACCURACY") return "GPS_INVALID";
+  if (op === "NO_GPS" || op === "OFFLINE" || op === "INACTIVE") return "OFFLINE";
+  if (op === "STALE_GPS" || gps === "STALE" || gps === "EXPIRED") return "STALE_GPS";
+  if (maxAccuracy && accuracy && accuracy > maxAccuracy) return "GPS_INVALID";
+  return op || "OFFLINE";
+}
+
+function resolverStateLabel(state) {
+  const labels = {
+    AVAILABLE: "Disponible",
+    BUSY: "Ocupado",
+    EN_ROUTE: "En camino",
+    ON_SITE: "En sitio",
+    OFFLINE: "Fuera de línea",
+    NO_GPS: "Sin GPS",
+    STALE_GPS: "GPS desactualizado",
+    GPS_INVALID: "GPS inválido",
+    BLOCKED_NO_TICKET: "Bloqueado sin caso",
+    INACTIVE: "Inactivo"
+  };
+  return labels[state] || state || "Sin estado";
+}
+
 function getResolverIcon(resolver) {
+  const state = resolverDisplayState(resolver);
+  let cssClass = "resolver-marker-offline";
 
-	let cssClass = "resolver-marker-available";
+  if (state === "AVAILABLE") cssClass = "resolver-marker-available";
+  if (state === "BUSY" || state === "BLOCKED_NO_TICKET") cssClass = "resolver-marker-busy";
+  if (state === "EN_ROUTE") cssClass = "resolver-marker-enroute";
+  if (state === "ON_SITE") cssClass = "resolver-marker-onsite";
+  if (state === "STALE_GPS") cssClass = "resolver-marker-stale";
+  if (state === "GPS_INVALID") cssClass = "resolver-marker-invalid";
+  if (state === "OFFLINE" || state === "NO_GPS" || state === "INACTIVE") cssClass = "resolver-marker-offline";
 
-	if (resolver.status === "BUSY") {
-		cssClass = "resolver-marker-busy";
-	}
-
-	if (resolver.status === "EN_ROUTE") {
-		cssClass = "resolver-marker-enroute";
-	}
-
-	return L.divIcon({
-className: "",
-html: `<div class="${cssClass}">👮</div>`,
-iconSize: [50, 50],
-iconAnchor: [25, 25]
-});
+  return L.divIcon({
+    className: "",
+    html: `<div class="${cssClass}">👮</div>`,
+    iconSize: [50, 50],
+    iconAnchor: [25, 25]
+  });
 }
 
 
@@ -1453,11 +1524,19 @@ function renderResolver(resolver) {
         ? `GPS antiguo (${minutesOld} min)`
         : `GPS vencido (${minutesOld} min)`;
 
+  const displayState = resolverDisplayState(resolver);
+  const maxAccuracyText = resolver.max_allowed_accuracy_meters != null ? `${Math.round(Number(resolver.max_allowed_accuracy_meters))} m` : "-";
+  const gpsState = resolver.gps_state || "-";
+
   const popup = `
     <strong>👮 ${resolver.full_name}</strong><br>
-    Estado: ${resolver.status}<br>
+    Estado operativo: <strong>${resolverStateLabel(displayState)}</strong><br>
+    Estado técnico: ${resolver.raw_status || resolver.status || "-"}<br>
+    GPS: ${gpsState}<br>
     Frescura: ${freshness}<br>
     Precisión: ${accuracyText}<br>
+    Máx. permitido: ${maxAccuracyText}<br>
+    Casos activos: ${resolver.active_tickets_count ?? 0}<br>
     Latitud real: ${resolver.latitude}<br>
     Longitud real: ${resolver.longitude}<br>
     Teléfono: ${resolver.phone ?? "-"}<br>
