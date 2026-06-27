@@ -1191,14 +1191,16 @@ function renderDevice(device) {
 		? '<span style="color:#ea580c;font-weight:bold;">⚠️ SOS RECIENTE</span>'
 		: '<span style="color:#15803d;font-weight:bold;">✅ NORMAL</span>';
 
+  const latLng = getVisualLatLng(device);
 	const popup = `
 		<strong>${name}</strong><br>
 		ID: ${device.id}<br>
 		Estado SOS: ${sosText}<br>
 		Estado dispositivo: ${device.online ? "Online" : "Offline"}<br>
 		Último evento: ${device.last_event_type ?? "-"}<br>
-		Latitud: ${device.latitude}<br>
-		Longitud: ${device.longitude}<br>
+		Latitud real: ${device.latitude}<br>
+		Longitud real: ${device.longitude}<br>
+    ${device._overlapCount > 1 ? `<small>Marcador desplazado visualmente (${device._overlapIndex}/${device._overlapCount}) para evitar traslape.</small><br>` : ""}
 		Velocidad: ${device.speed ?? "-"} km/h<br>
 		Dirección: ${device.direction ?? "-"}°<br>
 		Satélites: ${device.satellites ?? "-"}<br>
@@ -1215,14 +1217,11 @@ function renderDevice(device) {
 
 	if (!deviceMarkers[device.id]) {
 		deviceMarkers[device.id] = L.marker(
-				[device.latitude, device.longitude],
+				latLng,
 				{ icon, pane: "devicesPane", zIndexOffset: 0 }
 				).addTo(map);
 	} else {
-		deviceMarkers[device.id].setLatLng([
-				device.latitude,
-				device.longitude
-		]);
+		deviceMarkers[device.id].setLatLng(latLng);
 
 		deviceMarkers[device.id].setIcon(icon);
 	}
@@ -1232,6 +1231,7 @@ function renderDevice(device) {
 
 
 function renderSiren(siren) {
+  const latLng = getVisualLatLng(siren);
   const active =
     siren.active === true ||
     siren.relay === true ||
@@ -1250,6 +1250,9 @@ function renderSiren(siren) {
         : '<strong>Apagada</strong>'
     }<br>
     Ubicación: ${siren.location ?? "-"}<br>
+    Latitud real: ${siren.latitude}<br>
+    Longitud real: ${siren.longitude}<br>
+    ${siren._overlapCount > 1 ? `<small>Marcador desplazado visualmente (${siren._overlapIndex}/${siren._overlapCount}) para evitar traslape.</small><br>` : ""}
     ${
       active
         ? `<button class="btn-siren btn-off" onclick="deactivateSiren('${siren.id}')">Apagar sirena</button>`
@@ -1259,14 +1262,11 @@ function renderSiren(siren) {
 
   if (!sirenMarkers[siren.id]) {
     sirenMarkers[siren.id] = L.marker(
-      [siren.latitude, siren.longitude],
+      latLng,
       { icon, pane: "sirensPane", zIndexOffset: 1000 }
     ).addTo(map);
   } else {
-    sirenMarkers[siren.id].setLatLng([
-      siren.latitude,
-      siren.longitude
-    ]);
+    sirenMarkers[siren.id].setLatLng(latLng);
 
     sirenMarkers[siren.id].setIcon(icon);
     sirenMarkers[siren.id].setZIndexOffset(1000);
@@ -1300,34 +1300,30 @@ function offsetLatLng(lat, lng, index, radiusMeters = 18) {
 }
 
 function applyVisualOffsets(devices, sirens, resolvers, tickets, mobileEvents) {
-  const occupied = new Map();
+  const items = [
+    ...devices.map(item => ({ item, type: "device" })),
+    ...sirens.map(item => ({ item, type: "siren" })),
+    ...resolvers.map(item => ({ item, type: "resolver" })),
+    ...tickets.map(item => ({ item, type: "ticket" })),
+    ...mobileEvents.map(item => ({ item, type: "mobile" }))
+  ].filter(({ item }) => isValidCoordinate(item.latitude, item.longitude));
 
-  function register(lat, lng) {
-    if (!isValidCoordinate(lat, lng)) return;
-    const key = coordKey(lat, lng);
-    occupied.set(key, (occupied.get(key) || 0) + 1);
-  }
-
-  // Primero registramos puntos base que podrían tapar al ticket móvil.
-  devices.forEach(d => register(d.latitude, d.longitude));
-  sirens.forEach(s => register(s.latitude, s.longitude));
-  resolvers.forEach(r => register(r.latitude, r.longitude));
-
-  function assignVisualPoint(item) {
-    if (!isValidCoordinate(item.latitude, item.longitude)) return;
-
+  const groups = new Map();
+  items.forEach(({ item, type }) => {
     const key = coordKey(item.latitude, item.longitude);
-    const index = occupied.get(key) || 0;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ item, type });
+  });
 
-    item._visualLatLng = index === 0
-      ? [Number(item.latitude), Number(item.longitude)]
-      : offsetLatLng(item.latitude, item.longitude, index);
-
-    occupied.set(key, index + 1);
-  }
-
-  tickets.forEach(assignVisualPoint);
-  mobileEvents.forEach(assignVisualPoint);
+  groups.forEach((group) => {
+    group.forEach(({ item }, index) => {
+      item._visualLatLng = group.length <= 1
+        ? [Number(item.latitude), Number(item.longitude)]
+        : offsetLatLng(item.latitude, item.longitude, index);
+      item._overlapCount = group.length;
+      item._overlapIndex = index + 1;
+    });
+  });
 }
 
 function getVisualLatLng(item) {
@@ -1442,35 +1438,47 @@ function renderMobileEvent(event) {
 
 
 function renderResolver(resolver) {
+  if (!isValidCoordinate(resolver.latitude, resolver.longitude)) return;
 
-const popup = `
-	<strong>👮 ${resolver.full_name}</strong><br>
-	Estado: ${resolver.status}<br>
-	Teléfono: ${resolver.phone ?? "-"}<br>
-	Última actualización: ${resolver.updated_at}
-`;
+  const latLng = getVisualLatLng(resolver);
+  const accuracyText = resolver.accuracy != null ? `${Math.round(Number(resolver.accuracy))} m` : "-";
+  const updatedText = resolver.updated_at ? new Date(resolver.updated_at).toLocaleString("es-CL") : "-";
+  const updatedMs = resolver.updated_at ? new Date(resolver.updated_at).getTime() : 0;
+  const minutesOld = updatedMs ? Math.round((Date.now() - updatedMs) / 60000) : null;
+  const freshness = minutesOld == null
+    ? "Sin actualización"
+    : minutesOld <= 3
+      ? "GPS reciente"
+      : minutesOld <= 10
+        ? `GPS antiguo (${minutesOld} min)`
+        : `GPS vencido (${minutesOld} min)`;
 
-const icon = getResolverIcon(resolver);
+  const popup = `
+    <strong>👮 ${resolver.full_name}</strong><br>
+    Estado: ${resolver.status}<br>
+    Frescura: ${freshness}<br>
+    Precisión: ${accuracyText}<br>
+    Latitud real: ${resolver.latitude}<br>
+    Longitud real: ${resolver.longitude}<br>
+    Teléfono: ${resolver.phone ?? "-"}<br>
+    Última actualización: ${updatedText}<br>
+    ${resolver._overlapCount > 1 ? `<small>Marcador desplazado visualmente (${resolver._overlapIndex}/${resolver._overlapCount}) para evitar traslape. La coordenada real se mantiene arriba.</small><br>` : ""}
+  `;
 
-if (!resolverMarkers[resolver.id]) {
+  const icon = getResolverIcon(resolver);
 
-	resolverMarkers[resolver.id] = L.marker(
-			[resolver.latitude, resolver.longitude],
-			{ icon, pane: "resolversPane", zIndexOffset: 3000 }
-			).addTo(map);
+  if (!resolverMarkers[resolver.id]) {
+    resolverMarkers[resolver.id] = L.marker(
+      latLng,
+      { icon, pane: "resolversPane", zIndexOffset: 3000 }
+    ).addTo(map);
+  } else {
+    resolverMarkers[resolver.id].setLatLng(latLng);
+    resolverMarkers[resolver.id].setIcon(icon);
+    resolverMarkers[resolver.id].setZIndexOffset(3000);
+  }
 
-} else {
-
-	resolverMarkers[resolver.id].setLatLng([
-			resolver.latitude,
-			resolver.longitude
-	]);
-
-	resolverMarkers[resolver.id].setIcon(icon);
-	resolverMarkers[resolver.id].setZIndexOffset(3000);
-}
-
-resolverMarkers[resolver.id].bindPopup(popup);
+  resolverMarkers[resolver.id].bindPopup(popup);
 }
 
 function closeTicketPanel(event) {
