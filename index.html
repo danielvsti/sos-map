@@ -2573,7 +2573,8 @@ ${physicalPhoneClean
 <button onclick="activateNearestSiren()">
   🚨 Activar sirena
 </button>
-${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Reintentar asignación</button>` : ""}
+${assignmentButtonHtml}
+${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 
 <div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
   Llamadas y videollamadas internas deshabilitadas temporalmente hasta integración WA-CENTER/WebRTC.
