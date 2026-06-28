@@ -340,6 +340,80 @@ padding: 16px;
 }
 
 
+
+.assignment-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, .52);
+  z-index: 100000;
+  padding: 20px;
+}
+.assignment-modal.hidden { display: none; }
+.assignment-dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: hidden;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, .35);
+  display: flex;
+  flex-direction: column;
+}
+.assignment-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.assignment-head h3 { margin: 0; font-size: 22px; color: #111827; }
+.assignment-head p { margin: 5px 0 0; color: #64748b; line-height: 1.35; font-size: 14px; }
+.assignment-close {
+  border: none;
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: #e5e7eb;
+  font-weight: 900;
+  cursor: pointer;
+}
+.assignment-list {
+  overflow: auto;
+  padding: 14px 16px 18px;
+  display: grid;
+  gap: 10px;
+}
+.assignment-row {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+}
+.assignment-row:hover { border-color: #2563eb; background: #eff6ff; }
+.assignment-row .resolver-name { font-size: 17px; font-weight: 950; color: #111827; }
+.assignment-row .resolver-meta { color: #475569; font-size: 14px; line-height: 1.35; }
+.assignment-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 950;
+  margin-right: 6px;
+}
+.assignment-badge.ok { background: #dcfce7; color: #166534; }
+.assignment-badge.warn { background: #fef3c7; color: #92400e; }
+.assignment-badge.bad { background: #fee2e2; color: #991b1b; }
+.assignment-empty { padding: 20px; color: #64748b; text-align: center; font-weight: 850; }
+
 .ticket-actions {
 display: flex;
  flex-wrap: wrap;
@@ -1350,6 +1424,8 @@ const resolverMarkers = {};
 let selectedTicket = null;
 let selectedMobileEvent = null;
 let currentSirens = [];
+let currentResolvers = [];
+let currentTickets = [];
 
 async function activateSiren(sirenId) {
 if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
@@ -2230,6 +2306,150 @@ async function autoAssignTicket(ticketId) {
   }
 }
 
+function assignmentGpsText(resolver) {
+  if (!resolver?.updated_at) return "sin GPS";
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(resolver.updated_at).getTime()) / 60000));
+  if (minutes <= 1) return "GPS recién actualizado";
+  if (minutes < 60) return `GPS hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  return `GPS hace ${hours} h`;
+}
+
+function resolverDistanceText(resolver, ticket) {
+  if (!resolver || !ticket || resolver.latitude == null || resolver.longitude == null || ticket.latitude == null || ticket.longitude == null) return "distancia -";
+  const meters = distanceMeters(Number(ticket.latitude), Number(ticket.longitude), Number(resolver.latitude), Number(resolver.longitude));
+  if (!Number.isFinite(meters)) return "distancia -";
+  return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
+}
+
+function resolverAssignmentClass(resolver) {
+  const state = resolverDisplayState(resolver);
+  const active = Number(resolver.active_tickets_count || 0);
+  if (state === "AVAILABLE" && active === 0) return "ok";
+  if (["OFFLINE", "NO_GPS", "STALE_GPS", "GPS_INVALID", "INACTIVE"].includes(state)) return "bad";
+  return "warn";
+}
+
+function ensureAssignmentModal() {
+  let modal = document.getElementById("assignmentModal");
+  if (modal) return modal;
+  modal = document.createElement("div");
+  modal.id = "assignmentModal";
+  modal.className = "assignment-modal hidden";
+  modal.innerHTML = `
+    <div class="assignment-dialog">
+      <div class="assignment-head">
+        <div>
+          <h3 id="assignmentTitle">Asignar resolutor</h3>
+          <p id="assignmentSubtitle">Selecciona un resolutor para el ticket.</p>
+        </div>
+        <button class="assignment-close" onclick="closeAssignmentModal()">Cerrar</button>
+      </div>
+      <div id="assignmentList" class="assignment-list"></div>
+    </div>
+  `;
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeAssignmentModal();
+  });
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function closeAssignmentModal() {
+  const modal = document.getElementById("assignmentModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function openAssignmentModal(mode = "assign") {
+  if (!selectedTicket) {
+    alert("No hay ticket seleccionado");
+    return;
+  }
+
+  const modal = ensureAssignmentModal();
+  const title = document.getElementById("assignmentTitle");
+  const subtitle = document.getElementById("assignmentSubtitle");
+  const list = document.getElementById("assignmentList");
+
+  title.textContent = mode === "reassign" ? "Reasignar resolutor" : "Asignar resolutor";
+  subtitle.textContent = `${shortTicketId(selectedTicket.id)} · ${selectedTicket.title || "Ticket"} · ${ticketIncidentSector(selectedTicket)}`;
+
+  const resolvers = [...(currentResolvers || [])]
+    .map((resolver) => {
+      const displayState = resolverDisplayState(resolver);
+      const active = Number(resolver.active_tickets_count || 0);
+      const distanceText = resolverDistanceText(resolver, selectedTicket);
+      const className = resolverAssignmentClass(resolver);
+      return { ...resolver, displayState, active, distanceText, className };
+    })
+    .sort((a, b) => {
+      const rank = (r) => (r.displayState === "AVAILABLE" && r.active === 0 ? 0 : r.displayState === "AVAILABLE" ? 1 : 2);
+      return rank(a) - rank(b) || String(a.full_name || "").localeCompare(String(b.full_name || ""));
+    });
+
+  if (!resolvers.length) {
+    list.innerHTML = `<div class="assignment-empty">No hay resolutores cargados en el mapa.</div>`;
+  } else {
+    list.innerHTML = resolvers.map((resolver) => `
+      <button class="assignment-row" onclick="manualAssignSelectedTicket('${resolver.id}')">
+        <span class="resolver-name">👮 ${resolver.full_name || "Resolutor"}</span>
+        <span>
+          <span class="assignment-badge ${resolver.className}">${resolverStateLabel(resolver.displayState)}</span>
+          <span class="assignment-badge ${resolver.active > 0 ? "warn" : "ok"}">${resolver.active} caso(s)</span>
+        </span>
+        <span class="resolver-meta">${resolver.distanceText} · ${assignmentGpsText(resolver)} · precisión ${resolver.accuracy == null ? "-" : Math.round(Number(resolver.accuracy)) + " m"}</span>
+      </button>
+    `).join("");
+  }
+
+  modal.classList.remove("hidden");
+}
+
+async function manualAssignSelectedTicket(resolverUserId) {
+  if (!selectedTicket || !resolverUserId) return;
+  const resolver = (currentResolvers || []).find((item) => String(item.id) === String(resolverUserId));
+  const displayState = resolverDisplayState(resolver || {});
+  const active = Number(resolver?.active_tickets_count || 0);
+  const needsForce = active > 0 || displayState !== "AVAILABLE";
+
+  if (needsForce) {
+    const ok = confirm(
+      `${resolver?.full_name || "El resolutor"} no está libre (${resolverStateLabel(displayState)}, ${active} caso(s) activo(s)).\n\n¿Asignar de todas formas por decisión del operador?`
+    );
+    if (!ok) return;
+  }
+
+  try {
+    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/manual-assign`, {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify({
+        resolver_user_id: resolverUserId,
+        force: needsForce,
+        reason: needsForce
+          ? "Asignación manual forzada desde mapa operacional"
+          : "Asignación manual desde mapa operacional"
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.status !== "ok") {
+      if (data.code === "RESOLVER_NOT_FREE_REQUIRES_FORCE") {
+        alert("El resolutor requiere asignación forzada. Intenta nuevamente y confirma la advertencia.");
+      } else {
+        alert(data.message || "No fue posible asignar el ticket");
+      }
+      return;
+    }
+    closeAssignmentModal();
+    alert(`${data.forced ? "Asignación forzada" : "Asignación"} realizada a ${data.resolver?.full_name || "resolutor"}`);
+    await loadMapState();
+    await openTicketPanel(selectedTicket.id);
+  } catch (error) {
+    console.error(error);
+    alert("No fue posible asignar el ticket");
+  }
+}
+
 
 async function openTicketPanel(ticketId) {
 
@@ -2324,16 +2544,23 @@ ${ticket.citizen_name || "-"}<br>
 `;
 
 const latestAssignmentState = String(ticket.latest_assignment_state || "").toUpperCase();
+const ticketState = String(ticket.state || "").toUpperCase();
 const assignmentWasRejected = latestAssignmentState === "REJECTED";
+const terminalTicket = ["CLOSED", "CANCELLED", "RESOLVED"].includes(ticketState);
 const hasBlockingResolver = ticket.assigned_resolver_id && ticket.resolver_name && !assignmentWasRejected;
-const needsAssignment = (!hasBlockingResolver || assignmentWasRejected) && !["CLOSED", "CANCELLED", "RESOLVED"].includes(String(ticket.state || ""));
+const needsAssignment = (!hasBlockingResolver || assignmentWasRejected) && !terminalTicket;
+const canManualReassign = !!hasBlockingResolver && !terminalTicket;
+const assignmentButtonHtml = needsAssignment
+  ? `<button class="btn-secondary" onclick="openAssignmentModal('assign')">👮 Asignar resolutor</button>`
+  : (canManualReassign ? `<button class="btn-secondary" onclick="openAssignmentModal('reassign')">🔁 Reasignar resolutor</button>` : "");
 
 const resolverActionsHtml = isPhysicalDevice
   ? `
 <button onclick="activateNearestSiren()">
   🚨 Activar sirena
 </button>
-${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Reintentar asignación</button>` : ""}
+${assignmentButtonHtml}
+${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 ${physicalPhoneClean
   ? `<button onclick="callDirectPhone('${physicalPhoneClean}')">📞 Llamar directo</button>`
   : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono</button>`
@@ -2522,6 +2749,8 @@ const sirens = data.sirens || [];
       currentSirens = sirens;
 const tickets = data.tickets || [];
 const resolvers = data.resolvers || [];
+currentTickets = tickets;
+currentResolvers = resolvers;
 const publicMobileEvents = publicData.mobile_events || [];
 const ticketSourceIds = new Set(
   tickets
