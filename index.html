@@ -902,28 +902,39 @@ Selecciona una emergencia.
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-const CONTROL_CENTER_CODE = "CC-VINA";
-const MAP_STATE_URL = `https://sos.vsti.cl/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
-const PUBLIC_MAP_STATE_URL = "https://sos.vsti.cl/public/map-state";
-const TICKET_URL = "https://sos.vsti.cl/tickets";
-const SIREN_ACTIVATE_URL = "https://sos.vsti.cl/public/sirens/activate";
-const SIREN_DEACTIVATE_URL = "https://sos.vsti.cl/public/sirens/deactivate";
-const ACK_SOS_URL = "https://sos.vsti.cl/public/devices/ack-sos";
-const ACK_MOBILE_SOS_URL = "https://sos.vsti.cl/public/mobile/ack";
+const SOS_CONFIG = window.SOS_CONFIG || {};
+const API_BASE = SOS_CONFIG.API_BASE || "https://sos.vsti.cl";
+const CONTROL_CENTER_CODE = SOS_CONFIG.CONTROL_CENTER_CODE || "CC-VINA";
+const MAP_STATE_URL = `${API_BASE}/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
+const PUBLIC_MAP_STATE_URL = `${API_BASE}/public/map-state`;
+const TICKET_URL = `${API_BASE}/tickets`;
+const SIREN_ACTIVATE_URL = `${API_BASE}/public/sirens/activate`;
+const SIREN_DEACTIVATE_URL = `${API_BASE}/public/sirens/deactivate`;
+const ACK_SOS_URL = `${API_BASE}/public/devices/ack-sos`;
+const ACK_MOBILE_SOS_URL = `${API_BASE}/public/mobile/ack`;
 
 const PANEL_TOKEN_KEY = "sos_control_panel_session_token";
 let panelSessionUser = null;
 let mapUpdateInterval = null;
 
 function getPanelToken() {
-return localStorage.getItem(PANEL_TOKEN_KEY) || "";
+const active = sessionStorage.getItem(PANEL_TOKEN_KEY) || "";
+const legacy = localStorage.getItem(PANEL_TOKEN_KEY) || "";
+if (!active && legacy) {
+sessionStorage.setItem(PANEL_TOKEN_KEY, legacy);
+localStorage.removeItem(PANEL_TOKEN_KEY);
+return legacy;
+}
+return active;
 }
 
 function setPanelToken(token) {
-localStorage.setItem(PANEL_TOKEN_KEY, token);
+sessionStorage.setItem(PANEL_TOKEN_KEY, token);
+localStorage.removeItem(PANEL_TOKEN_KEY);
 }
 
 function clearPanelToken() {
+sessionStorage.removeItem(PANEL_TOKEN_KEY);
 localStorage.removeItem(PANEL_TOKEN_KEY);
 }
 
@@ -967,7 +978,7 @@ try {
 button.disabled = true;
 button.textContent = "Entrando...";
 
-const res = await fetch("https://sos.vsti.cl/auth/panel-login", {
+const res = await fetch(`${API_BASE}/auth/panel-login`, {
 method: "POST",
 headers: jsonHeaders(),
 body: JSON.stringify({ phone, panel_type: "CONTROL_CENTER" })
@@ -1000,7 +1011,7 @@ return;
 }
 
 try {
-const res = await fetch("https://sos.vsti.cl/auth/session", {
+const res = await fetch(`${API_BASE}/auth/session`, {
 headers: authHeaders()
 });
 const data = await res.json();
