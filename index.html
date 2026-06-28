@@ -1468,7 +1468,56 @@ function mapSectorFromCoords(latitude, longitude) {
 }
 
 function ticketIncidentSector(ticket) {
-  return ticket?.incident_sector || ticket?.sector_estimado || ticket?.sector_aproximado || mapSectorFromCoords(ticket?.latitude, ticket?.longitude);
+  // Campo oficial normalizado: viene desde tickets.event_sector_name cuando el backend
+  // clasifica el punto contra control_center_sectors / Unidades Vecinales oficiales.
+  // Mantener una sola prioridad evita que el tooltip y el panel lateral muestren sectores distintos.
+  return (
+    ticket?.event_sector_name ||
+    ticket?.incident_sector_name ||
+    ticket?.incident_sector ||
+    ticket?.official_sector_name ||
+    ticket?.sector_name ||
+    ticket?.sector_estimado ||
+    ticket?.sector_aproximado ||
+    mapSectorFromCoords(ticket?.latitude, ticket?.longitude)
+  );
+}
+
+function ticketSectorMethod(ticket) {
+  return (
+    ticket?.event_sector_method ||
+    ticket?.incident_sector_method ||
+    ticket?.sector_method ||
+    ticket?.metodo_sector ||
+    ''
+  );
+}
+
+function ticketSectorSource(ticket) {
+  return (
+    ticket?.event_sector_source ||
+    ticket?.incident_sector_source ||
+    ticket?.sector_source ||
+    ''
+  );
+}
+
+function ticketSectorMetaHtml(ticket) {
+  const method = String(ticketSectorMethod(ticket) || '').trim();
+  const source = String(ticketSectorSource(ticket) || '').trim();
+  const officialish = /unidad_vecinal|oficial|uv|geoportal|mdsf|control_center_sectors|point_in_polygon/i.test(`${method} ${source}`);
+
+  if (officialish) {
+    return `<span style="font-size:12px;color:#047857;">Sector oficial según coordenada del evento.</span><br>`;
+  }
+
+  // No mostrar textos antiguos tipo "pendiente cartografía oficial". Si aún falta
+  // clasificación, entregar una explicación operacional neutra.
+  if (method || source) {
+    return `<span style="font-size:12px;color:#6b7280;">Sector obtenido desde datos operacionales del ticket.</span><br>`;
+  }
+
+  return '';
 }
 
 function emergencyVisual(ticket) {
@@ -2357,7 +2406,7 @@ document.getElementById(
     <strong>Estado:</strong> ${ticket.state}<br>
     <strong>Tipo:</strong> ${emergencyVisual(ticket).icon} ${emergencyVisual(ticket).label}<br>
     <strong>Sector evento:</strong> ${ticketIncidentSector(ticket)}<br>
-    <span style="font-size:12px;color:#6b7280;">Sector estimado por coordenada; pendiente cartografía oficial.</span><br>
+    ${ticketSectorMetaHtml(ticket)}
     <strong>Origen:</strong> ${ticket.source_type || "-"}<br>
     <strong>Evento origen:</strong><br>
     <span style="font-size:12px;color:#6b7280;word-break:break-all;">
