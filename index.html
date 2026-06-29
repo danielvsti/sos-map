@@ -2193,35 +2193,38 @@ function callDirectPhone(phone) {
   window.location.href = `tel:${clean}`;
 }
 
-async function registerOperatorCall(mode) {
+async function registerOperatorCall(mode = "voice") {
   if (!selectedTicket) {
     alert("No hay ticket seleccionado");
     return;
   }
 
   try {
-    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/call-start`, {
+    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/voice/request`, {
       method: "POST",
       headers: jsonHeaders(),
       body: JSON.stringify({
-        mode,
-        sender_role: "OPERATOR",
-        sender_name: "Central SOS"
+        target_type: "NEIGHBOR",
+        mode
       })
     });
 
-    if (!res.ok) throw new Error("Error HTTP " + res.status);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.status === "error") throw new Error(data.message || "Error HTTP " + res.status);
+
     await openTicketPanel(selectedTicket.id);
-    alert(mode === "voice" ? "Solicitud de llamada enviada al vecino" : "Solicitud de videollamada enviada al vecino");
+    const sessionId = data.voice_session?.wa_center_session_id || data.voice_session?.id || "";
+    alert(sessionId ? `Llamada segura solicitada · ${sessionId}` : "Llamada segura solicitada");
   } catch (error) {
     console.error(error);
-    alert("No se pudo registrar la gestión de llamada");
+    alert(error.message || "No se pudo solicitar llamada segura");
   }
 }
 
 function renderCommunications(actions) {
   const communicationActions = (actions || []).filter(a =>
     ["MESSAGE_TEXT", "MEDIA_AUDIO", "MEDIA_VIDEO", "CALL_VOICE", "CALL_VIDEO", "CALL_ACCEPTED", "CALL_REJECTED"].includes(a.action_type)
+    || String(a.action_type || "").startsWith("VOICE_")
   );
 
   if (communicationActions.length === 0) {
@@ -2258,6 +2261,16 @@ function renderCommunications(actions) {
           <strong>📹 Video recibido</strong><br>
           <video controls playsinline src="${meta.media_url || ""}"></video>
           <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
+        </div>
+      `;
+    }
+
+    if (String(action.action_type || "").startsWith("VOICE_")) {
+      return `
+        <div class="comm-card">
+          <strong>📞 Evento WA-Center</strong><br>
+          ${action.description || "Actualización técnica de llamada segura"}
+          <div class="comm-meta">${meta.wa_center_session_id || "WA-Center"} · ${date}</div>
         </div>
       `;
     }
@@ -2575,10 +2588,10 @@ ${physicalPhoneClean
 </button>
 ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
+<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Llamar vecino</button>
 
 <div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
-  Llamadas y videollamadas internas deshabilitadas temporalmente hasta integración WA-CENTER/WebRTC.
-  Por ahora usar texto, audio, evidencia y gestión del resolutor.
+  Llamada segura vía WA-Center/Asterisk WebRTC. La sesión queda asociada al ticket y registrada en la bitácora.
 </div>
 `;
 
