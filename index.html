@@ -435,6 +435,40 @@ font-size: 14px;
 background: #1d4ed8;
 }
 
+.operator-incoming-voice-banner {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fef2f2;
+  border: 2px solid #fca5a5;
+  color: #7f1d1d;
+  font-weight: 900;
+  line-height: 1.35;
+  animation: operatorVoicePulse 1.2s infinite;
+}
+.operator-incoming-voice-banner span { display:block; font-size: 13px; color:#991b1b; margin-top:3px; }
+.operator-voice-note { width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35; }
+.operator-voice-floating-alert {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 100050;
+  max-width: 360px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #991b1b;
+  color: #fff;
+  font-weight: 950;
+  box-shadow: 0 18px 50px rgba(153,27,27,.38);
+  cursor: pointer;
+}
+.operator-voice-floating-alert small { display:block; margin-top:4px; color:#fee2e2; font-weight:800; }
+@keyframes operatorVoicePulse {
+  0% { box-shadow: 0 0 0 0 rgba(220,38,38,.34); }
+  70% { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+
 
 
 .timeline-item {
@@ -1443,6 +1477,102 @@ let currentOperatorVoice = { session: null, ua: null, call: null };
 let currentSirens = [];
 let currentResolvers = [];
 let currentTickets = [];
+let knownOperatorVoiceSessionIds = new Set(JSON.parse(localStorage.getItem("operator_known_voice_session_ids") || "[]"));
+
+function activeVoiceSessionForTicket(ticket) {
+  if (!ticket) return null;
+  const sessions = Array.isArray(ticket.voice_sessions) ? ticket.voice_sessions : [];
+  const fromList = sessions.find((session) => !["FAILED", "ENDED", "EXPIRED", "NO_ANSWER"].includes(String(session.status || "").toUpperCase()));
+  if (fromList) return fromList;
+  if (!ticket.voice_session_id && !ticket.wa_center_session_id) return null;
+  const status = String(ticket.voice_status || "CREATED").toUpperCase();
+  if (["FAILED", "ENDED", "EXPIRED", "NO_ANSWER"].includes(status)) return null;
+  return {
+    id: ticket.voice_session_id,
+    wa_center_session_id: ticket.wa_center_session_id,
+    status,
+    requested_by: ticket.voice_requested_by,
+    target_type: ticket.voice_target_type,
+    created_at: ticket.voice_created_at
+  };
+}
+
+function isCentralIncomingVoice(ticket) {
+  const session = activeVoiceSessionForTicket(ticket);
+  return !!session
+    && String(session.target_type || "").toUpperCase() === "CENTRAL"
+    && String(session.requested_by || "").toUpperCase() === "NEIGHBOR";
+}
+
+function isResolverVoiceWaiting(ticket) {
+  const session = activeVoiceSessionForTicket(ticket);
+  return !!session
+    && String(session.target_type || "").toUpperCase() === "RESOLVER"
+    && String(session.requested_by || "").toUpperCase() === "NEIGHBOR";
+}
+
+function operatorVoiceSessionKey(ticket) {
+  const session = activeVoiceSessionForTicket(ticket);
+  return session?.id || session?.wa_center_session_id || null;
+}
+
+function saveKnownOperatorVoiceSessionIds() {
+  localStorage.setItem("operator_known_voice_session_ids", JSON.stringify([...knownOperatorVoiceSessionIds].slice(-120)));
+}
+
+function playOperatorRing() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1);
+    gain.connect(ctx.destination);
+    [0, .28, .56].forEach((offset) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(720, ctx.currentTime + offset);
+      osc.connect(gain);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + .18);
+    });
+    setTimeout(() => ctx.close().catch(() => null), 1500);
+  } catch (error) {
+    console.warn("No se pudo reproducir ring de operador", error);
+  }
+}
+
+function showOperatorIncomingVoiceAlert(ticket) {
+  let alertEl = document.getElementById("operatorVoiceFloatingAlert");
+  if (!alertEl) {
+    alertEl = document.createElement("div");
+    alertEl.id = "operatorVoiceFloatingAlert";
+    alertEl.className = "operator-voice-floating-alert";
+    document.body.appendChild(alertEl);
+  }
+  alertEl.innerHTML = `📞 Llamada entrante del vecino<small>${escapeHtml(ticket.citizen_name || "Vecino")} · Ticket ${escapeHtml(shortTicketId(ticket.id))}</small>`;
+  alertEl.onclick = () => openTicketPanel(ticket.id);
+  clearTimeout(showOperatorIncomingVoiceAlert._timer);
+  showOperatorIncomingVoiceAlert._timer = setTimeout(() => alertEl.remove(), 12000);
+}
+
+function notifyOperatorIncomingVoice(tickets) {
+  const incoming = (tickets || []).filter(isCentralIncomingVoice);
+  const newOnes = incoming.filter((ticket) => {
+    const key = operatorVoiceSessionKey(ticket);
+    return key && !knownOperatorVoiceSessionIds.has(String(key));
+  });
+  incoming.forEach((ticket) => {
+    const key = operatorVoiceSessionKey(ticket);
+    if (key) knownOperatorVoiceSessionIds.add(String(key));
+  });
+  saveKnownOperatorVoiceSessionIds();
+  if (!newOnes.length) return;
+  playOperatorRing();
+  showOperatorIncomingVoiceAlert(newOnes[0]);
+}
 
 async function activateSiren(sirenId) {
 if (!confirm(`¿Activar ${sirenId} por 60 segundos?`)) return;
@@ -2627,6 +2757,7 @@ const res = await fetch(
 const data = await res.json();
 
 const ticket = data.ticket;
+ticket.voice_sessions = data.voice_sessions || [];
  selectedTicket = ticket;	
 const now = Date.now();
 
@@ -2925,6 +3056,7 @@ const tickets = data.tickets || [];
 const resolvers = data.resolvers || [];
 currentTickets = tickets;
 currentResolvers = resolvers;
+notifyOperatorIncomingVoice(tickets);
 const publicMobileEvents = publicData.mobile_events || [];
 const ticketSourceIds = new Set(
   tickets
