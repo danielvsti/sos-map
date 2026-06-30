@@ -563,6 +563,24 @@ background: #f97316 !important;
   font-weight: 800;
 }
 
+.ticket-call-badge {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: white;
+  border: 3px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 0 0 4px rgba(220,38,38,.22), 0 8px 16px rgba(0,0,0,.25);
+  animation: pulse-fast 1s infinite;
+}
+
 .ticket-emergency-sos { background: #dc2626; }
 .ticket-emergency-medical { background: #2563eb; }
 .ticket-emergency-fire { background: #ea580c; }
@@ -1552,14 +1570,23 @@ function showOperatorIncomingVoiceAlert(ticket) {
     alertEl.className = "operator-voice-floating-alert";
     document.body.appendChild(alertEl);
   }
-  alertEl.innerHTML = `📞 Llamada entrante del vecino<small>${escapeHtml(ticket.citizen_name || "Vecino")} · Ticket ${escapeHtml(shortTicketId(ticket.id))}</small>`;
+
+  const resolverWaiting = isResolverVoiceWaiting(ticket);
+  const title = resolverWaiting
+    ? "📞 Vecino pidió hablar con el resolutor"
+    : "📞 Llamada entrante del vecino";
+  const detail = resolverWaiting
+    ? `${ticket.citizen_name || "Vecino"} · espera a ${ticket.resolver_name || "resolutor asignado"} · Ticket ${shortTicketId(ticket.id)}`
+    : `${ticket.citizen_name || "Vecino"} · Ticket ${shortTicketId(ticket.id)}`;
+
+  alertEl.innerHTML = `${escapeHtml(title)}<small>${escapeHtml(detail)}</small>`;
   alertEl.onclick = () => openTicketPanel(ticket.id);
   clearTimeout(showOperatorIncomingVoiceAlert._timer);
   showOperatorIncomingVoiceAlert._timer = setTimeout(() => alertEl.remove(), 12000);
 }
 
 function notifyOperatorIncomingVoice(tickets) {
-  const incoming = (tickets || []).filter(isCentralIncomingVoice);
+  const incoming = (tickets || []).filter((ticket) => isCentralIncomingVoice(ticket) || isResolverVoiceWaiting(ticket));
   const newOnes = incoming.filter((ticket) => {
     const key = operatorVoiceSessionKey(ticket);
     return key && !knownOperatorVoiceSessionIds.has(String(key));
@@ -1570,8 +1597,10 @@ function notifyOperatorIncomingVoice(tickets) {
   });
   saveKnownOperatorVoiceSessionIds();
   if (!newOnes.length) return;
-  playOperatorRing();
-  showOperatorIncomingVoiceAlert(newOnes[0]);
+
+  const centralFirst = newOnes.find(isCentralIncomingVoice);
+  if (centralFirst) playOperatorRing();
+  showOperatorIncomingVoiceAlert(centralFirst || newOnes[0]);
 }
 
 async function activateSiren(sirenId) {
@@ -1788,10 +1817,11 @@ function getTicketIcon(ticket) {
   const visual = emergencyVisual(ticket);
   const blinkClass = ticketRequiresBlink(ticket) ? "ticket-emergency-unaccepted" : "ticket-emergency-accepted";
   const assignmentClass = ticket?.assigned_resolver_id ? "ticket-emergency-assigned" : "";
+  const callBadge = activeVoiceSessionForTicket(ticket) ? `<span class="ticket-call-badge" title="Llamada segura activa o pendiente">📞</span>` : "";
 
   return L.divIcon({
     className: "",
-    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass}" title="${visual.label}">${visual.icon}<small>${visual.label}</small></div>`,
+    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass}" title="${visual.label}">${visual.icon}${callBadge}<small>${visual.label}</small></div>`,
     iconSize: [58, 58],
     iconAnchor: [29, 29]
   });
@@ -2896,19 +2926,156 @@ ${physicalPhoneClean
 ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 ${voiceBannerHtml}
-	${centralVoiceActionsHtml}
-	
-	<div class="voice-call-panel">
-	  <strong>WA-Center WebRTC</strong>
-	  <div id="operatorVoiceStatus">Listo. Si llamas desde central o atiendes una llamada entrante, el estado cambiará a “En llamada segura”.</div>
-	  <div class="voice-call-actions">
-	    <button class="btn-secondary" onclick="stopOperatorVoice()">Colgar llamada central</button>
-	  </div>
+${centralVoiceActionsHtml}
+
+<div class="voice-call-panel">
+  <strong>WA-Center WebRTC</strong>
+  <div id="operatorVoiceStatus">Listo. Si llamas desde central o atiendes una llamada entrante, el estado cambiará a “En llamada segura”.</div>
+  <div class="voice-call-actions">
+    <button class="btn-secondary" onclick="stopOperatorVoice()">Colgar llamada central</button>
+  </div>
+</div>
+
+<div class="operator-voice-note">
+  Si el vecino pidió hablar con el resolutor, la llamada debe atenderla el resolutor desde su app. La central solo atiende llamadas dirigidas a central.
+</div>`;
+
+
+document.getElementById(
+		"ticketTitle"
+		).innerHTML = `
+<div>
+  <div>🚨 ${ticket.title}</div>
+  <div style="font-size:14px;color:#6b7280;font-weight:normal;">
+    Ticket ${shortId}
+  </div>
+</div>
+`;
+
+const contactsHtml =
+	data.emergency_contacts
+	.map(c => `
+			<div class="contact-card">
+			<strong>${c.name}</strong><br>
+			${c.relationship}<br>
+			📞 ${c.phone}
+			</div>
+			`)
+	.join("");
+
+const notesHtml =
+	data.notes
+	.map(n => `
+			<div class="timeline-item">
+			<div>${n.note}</div>
+			<div class="timeline-date">
+			${n.author_name || "-"} ·
+			${new Date(n.created_at).toLocaleString()}
+			</div>
+			</div>
+			`)
+	.join("");
+
+const actionsHtml =
+	data.actions
+	.map(a => `
+			<div class="timeline-item">
+			<strong>${a.action_type}</strong><br>
+			${a.description}
+			<div class="timeline-date">
+			${new Date(a.created_at).toLocaleString()}
+			</div>
+			</div>
+			`)
+	.join("");
+
+
+document.getElementById(
+		"ticketContent"
+	).innerHTML = `
+<div class="ticket-content-section">
+  <div class="ticket-id-box">
+    <strong>Ticket:</strong> ${shortId}<br>
+    <strong>ID completo:</strong><br>
+    <span style="font-size:12px;color:#6b7280;word-break:break-all;">
+      ${ticket.id}
+    </span><br><br>
+    <strong>Estado:</strong> ${ticket.state}<br>
+    <strong>Tipo:</strong> ${emergencyVisual(ticket).icon} ${emergencyVisual(ticket).label}<br>
+    <strong>Sector evento:</strong> ${ticketIncidentSector(ticket)}<br>
+    ${ticketSectorMetaHtml(ticket)}
+    <strong>Origen:</strong> ${ticket.source_type || "-"}<br>
+    <strong>Evento origen:</strong><br>
+    <span style="font-size:12px;color:#6b7280;word-break:break-all;">
+      ${sourceEventId}
+    </span>
+    <br><br>
+    <button
+      onclick="copyTicketId('${ticket.id}')"
+      style="border:none;border-radius:8px;padding:8px 12px;background:#374151;color:white;cursor:pointer;"
+    >
+      📋 Copiar ticket
+    </button>
+  </div>
+</div>
+
+<div class="ticket-content-section">
+
+<strong>SLA</strong><br><br>
+
+<div style="color:${slaColor}; font-size:18px; font-weight:bold;">
+⏱️ ${formatDuration(totalElapsed)}
+</div>
+
+<br>
+
+🎯 Asignación:
+${formatDuration(assignmentTime)}
+
+<br>
+
+✅ Resolución:
+${formatDuration(resolutionTime)}
+
+</div>
+
+
+
+${neighborHtml}
+
+<div class="ticket-content-section">
+<strong>Resolutor:</strong><br>
+👮 ${assignmentWasRejected ? "Asignación rechazada / requiere reasignación" : (ticket.resolver_name || "Sin asignar")}
+${assignmentWasRejected ? `<div style="margin-top:8px;padding:10px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:14px;line-height:1.3;">⚠️ El resolutor rechazó este caso. Reintenta la asignación para enviarlo a otro resolutor disponible.</div>` : ""}
+
+<div class="ticket-actions">
+
+${resolverActionsHtml}
+
 	</div>
-	
-	<div class="operator-voice-note">
-	  Si el vecino pidió hablar con el resolutor, la llamada debe atenderla el resolutor desde su app. La central solo atiende llamadas dirigidas a central.
-	</div>	`;
+	</div>
+
+
+	<div class="ticket-content-section">
+	<strong>Contactos de emergencia</strong>
+	${contactsHtml || "Sin contactos"}
+</div>
+
+	<div class="ticket-content-section">
+	<strong>Comunicaciones</strong>
+	${communicationHtml}
+</div>
+
+	<div class="ticket-content-section">
+	<strong>Notas</strong>
+	${notesHtml || "Sin notas"}
+</div>
+
+	<div class="ticket-content-section">
+	<strong>Historial</strong>
+	${actionsHtml}
+</div>
+	`;
 
 document
 	.getElementById("ticketPanel")
