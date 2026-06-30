@@ -825,6 +825,22 @@ width: 100%;
 .map-filter-actions .secondary { background:#e5e7eb; color:#334155; }
 .map-filter-summary { margin-top:10px; color:#475569; font-weight:700; font-size:13px; }
 
+
+
+.voice-call-panel {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.voice-call-panel strong { display:block; margin-bottom:4px; }
+.voice-call-panel .voice-call-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.voice-call-panel button { font-size:13px; padding:7px 10px; border-radius:10px; }
+
 </style>
 </head>
 
@@ -1423,6 +1439,7 @@ const mobileEventMarkers = {};
 const resolverMarkers = {};
 let selectedTicket = null;
 let selectedMobileEvent = null;
+let currentOperatorVoice = { session: null, ua: null, call: null };
 let currentSirens = [];
 let currentResolvers = [];
 let currentTickets = [];
@@ -2193,6 +2210,141 @@ function callDirectPhone(phone) {
   window.location.href = `tel:${clean}`;
 }
 
+
+function loadMapScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (window.JsSIP) return resolve();
+    const existing = Array.from(document.scripts).find((script) => script.src && script.src.includes(src));
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureMapJsSIPLoaded() {
+  if (window.JsSIP) return;
+  const sources = [
+    "vendor/jssip.min.js",
+    "https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js",
+    "https://unpkg.com/jssip@3.10.1/dist/jssip.min.js"
+  ];
+  for (const src of sources) {
+    try {
+      await loadMapScriptOnce(src);
+      if (window.JsSIP) return;
+    } catch (error) {
+      console.warn("No se pudo cargar JsSIP desde", src, error);
+    }
+  }
+  throw new Error("No se pudo cargar JsSIP. Agrega vendor/jssip.min.js o revisa CDN.");
+}
+
+function operatorVoiceStatus(message) {
+  const el = document.getElementById("operatorVoiceStatus");
+  if (el) el.textContent = message || "Llamada segura lista";
+}
+
+function stopOperatorVoice() {
+  try { if (currentOperatorVoice.call) currentOperatorVoice.call.terminate(); } catch {}
+  try { if (currentOperatorVoice.ua) currentOperatorVoice.ua.stop(); } catch {}
+  currentOperatorVoice.ua = null;
+  currentOperatorVoice.call = null;
+  operatorVoiceStatus("Llamada segura finalizada");
+}
+
+async function connectOperatorVoice(voiceSession) {
+  const webrtc = voiceSession?.webrtc || voiceSession?.party_b_webrtc || null;
+  if (!webrtc) throw new Error("No hay credenciales WebRTC para central");
+  await ensureMapJsSIPLoaded();
+
+  const sipDomain = webrtc.sip_domain || "wa-center.vsti.cl";
+  const wssUrl = webrtc.wss_url || "wss://wa-center.vsti.cl/ws";
+  const destination = webrtc.destination;
+  if (!webrtc.username || !destination) throw new Error("Credenciales WebRTC incompletas");
+
+  operatorVoiceStatus("Conectando con WA-Center...");
+  const socket = new JsSIP.WebSocketInterface(wssUrl);
+  const config = {
+    sockets: [socket],
+    uri: `sip:${webrtc.username}@${sipDomain}`,
+    authorization_user: webrtc.username,
+    register: true,
+    session_timers: false,
+    realm: webrtc.realm || "asterisk"
+  };
+  if (webrtc.ha1) config.ha1 = webrtc.ha1;
+  else config.password = webrtc.password;
+
+  const ua = new JsSIP.UA(config);
+  currentOperatorVoice.ua = ua;
+  currentOperatorVoice.session = voiceSession;
+
+  ua.on("connected", () => operatorVoiceStatus("WebSocket conectado. Registrando..."));
+  ua.on("disconnected", () => operatorVoiceStatus("WebSocket desconectado"));
+  ua.on("registrationFailed", (e) => {
+    console.error("WA-Center operator registration failed", e);
+    operatorVoiceStatus(`Registro fallido (${e.cause || "sin detalle"})`);
+  });
+  ua.on("registered", () => {
+    operatorVoiceStatus("Registrado. Entrando al bridge...");
+    const target = `sip:${destination}@${sipDomain}`;
+    const call = ua.call(target, {
+      mediaConstraints: { audio: true, video: false },
+      pcConfig: { iceServers: voiceSession?.ice_servers || [] },
+      eventHandlers: {
+        progress: () => operatorVoiceStatus("Llamada segura en progreso..."),
+        confirmed: () => operatorVoiceStatus("En llamada segura"),
+        ended: () => stopOperatorVoice(),
+        failed: (e) => {
+          console.error("WA-Center operator call failed", e);
+          operatorVoiceStatus(`Llamada fallida (${e.cause || "sin detalle"})`);
+        }
+      }
+    });
+    currentOperatorVoice.call = call;
+    call.connection.addEventListener("track", (event) => {
+      let audio = document.getElementById("operatorRemoteAudio");
+      if (!audio) {
+        audio = document.createElement("audio");
+        audio.id = "operatorRemoteAudio";
+        audio.autoplay = true;
+        audio.playsInline = true;
+        document.body.appendChild(audio);
+      }
+      audio.srcObject = event.streams[0];
+    });
+  });
+  ua.start();
+}
+
+async function joinOperatorVoiceSession(sessionId = "latest") {
+  if (!selectedTicket) {
+    alert("No hay ticket seleccionado");
+    return;
+  }
+  try {
+    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/voice/sessions/${sessionId}/join`, {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.status === "error") throw new Error(data.message || "Error HTTP " + res.status);
+    await connectOperatorVoice(data.voice_session);
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "No fue posible atender la llamada segura");
+  }
+}
+
 async function registerOperatorCall(mode = "voice") {
   if (!selectedTicket) {
     alert("No hay ticket seleccionado");
@@ -2204,7 +2356,7 @@ async function registerOperatorCall(mode = "voice") {
       method: "POST",
       headers: jsonHeaders(),
       body: JSON.stringify({
-        target_type: "NEIGHBOR",
+        target_type: "CENTRAL",
         mode
       })
     });
@@ -2213,11 +2365,10 @@ async function registerOperatorCall(mode = "voice") {
     if (!res.ok || data.status === "error") throw new Error(data.message || "Error HTTP " + res.status);
 
     await openTicketPanel(selectedTicket.id);
-    const sessionId = data.voice_session?.wa_center_session_id || data.voice_session?.id || "";
-    alert(sessionId ? `Llamada segura solicitada · ${sessionId}` : "Llamada segura solicitada");
+    await connectOperatorVoice(data.voice_session);
   } catch (error) {
     console.error(error);
-    alert(error.message || "No se pudo solicitar llamada segura");
+    alert(error.message || "No se pudo iniciar llamada segura");
   }
 }
 
@@ -2588,7 +2739,16 @@ ${physicalPhoneClean
 </button>
 ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
-<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Llamar vecino</button>
+<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Crear llamada segura</button>
+<button class="btn-secondary" onclick="joinOperatorVoiceSession('latest')">🎧 Atender llamada</button>
+
+<div class="voice-call-panel">
+  <strong>WA-Center WebRTC</strong>
+  <div id="operatorVoiceStatus">Listo para crear o atender una llamada segura asociada a este ticket.</div>
+  <div class="voice-call-actions">
+    <button class="btn-secondary" onclick="stopOperatorVoice()">Colgar</button>
+  </div>
+</div>
 
 <div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
   Llamada segura vía WA-Center/Asterisk WebRTC. La sesión queda asociada al ticket y registrada en la bitácora.
