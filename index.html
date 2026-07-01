@@ -3200,7 +3200,7 @@ const ticketSourceIds = new Set(
 );
 
 const orphanMobileEvents = publicMobileEvents.filter(
-  event => !ticketSourceIds.has(event.id)
+  event => !event.linked_ticket_id && !ticketSourceIds.has(event.id)
 );
 
 
@@ -3235,11 +3235,7 @@ const recentSos = visibleDevices.filter(d =>
   d.sos_state === "RECENT"
 ).length;
 
-const mobileTicketCount = visibleTickets.filter(
-  t => t.source_type === "MOBILE_APP"
-).length;
-
-const mobileSos = mobileTicketCount + visibleOrphanMobileEvents.length;
+const mobileSos = visibleOrphanMobileEvents.length;
 
 
 
