@@ -3211,7 +3211,7 @@ const visibleTickets = allOpenTickets.filter(ticketPassesMapFilters);
 const visibleResolvers = resolvers.filter(resolverPassesMapFilters);
 const visibleSirens = mapFilters.show.sirens ? sirens : [];
 const visibleDevices = mapFilters.show.devices ? devices : [];
-const visibleOrphanMobileEvents = mapFilters.show.mobileEvents ? orphanMobileEvents : [];
+const visibleOrphanMobileEvents = [];
 
 lastMapFilterStats = {
   ticketsShown: visibleTickets.length,
