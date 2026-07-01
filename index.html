@@ -2358,6 +2358,16 @@ function shortTicketId(ticketId) {
   return "#" + String(ticketId).slice(0, 8).toUpperCase();
 }
 
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 async function copyTicketId(ticketId) {
   try {
     await navigator.clipboard.writeText(ticketId);
