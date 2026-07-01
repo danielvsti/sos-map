@@ -2978,7 +2978,8 @@ const assignmentButtonHtml = needsAssignment
   ? `<button class="btn-secondary" onclick="openAssignmentModal('assign')">👮 Asignar resolutor</button>`
   : (canManualReassign ? `<button class="btn-secondary" onclick="openAssignmentModal('reassign')">🔁 Reasignar resolutor</button>` : "");
 
-const sirenControlsEnabled = platformFeatureEnabled("sirens_enabled", true);
+const sirenControlsEnabled = platformFeatureEnabled("sirens_enabled", true)
+  && platformPolicyValue("siren_policy", "operator_manual_control_enabled", true) !== false;
 const secureVoiceEnabled = platformFeatureEnabled("secure_voice_enabled", true);
 const sirenActionButtonHtml = sirenControlsEnabled
   ? `<button onclick="activateNearestSiren()">🚨 Activar sirena</button>`
@@ -3228,7 +3229,8 @@ const allOpenTickets = tickets.filter(
 );
 const visibleTickets = allOpenTickets.filter(ticketPassesMapFilters);
 const visibleResolvers = resolvers.filter(resolverPassesMapFilters);
-const visibleSirens = mapFilters.show.sirens ? sirens : [];
+const sirensEnabledForMap = platformFeatureEnabled("sirens_enabled", true);
+const visibleSirens = sirensEnabledForMap && mapFilters.show.sirens ? sirens : [];
 const visibleDevices = mapFilters.show.devices ? devices : [];
 const visibleOrphanMobileEvents = [];
 
