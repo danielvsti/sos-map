@@ -581,6 +581,51 @@ background: #f97316 !important;
   animation: pulse-fast 1s infinite;
 }
 
+.ticket-report-badge {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: white;
+  border: 3px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 6px;
+  box-shadow: 0 8px 16px rgba(0,0,0,.25);
+}
+
+.ticket-report-summary {
+  padding: 12px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  font-size: 14px;
+  line-height: 1.35;
+  margin-top: 8px;
+}
+
+.ticket-report-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px;
+  margin-top: 8px;
+  background: #f8fafc;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.ticket-report-item.primary {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
 .ticket-emergency-sos { background: #dc2626; }
 .ticket-emergency-medical { background: #2563eb; }
 .ticket-emergency-fire { background: #ea580c; }
@@ -1818,10 +1863,12 @@ function getTicketIcon(ticket) {
   const blinkClass = ticketRequiresBlink(ticket) ? "ticket-emergency-unaccepted" : "ticket-emergency-accepted";
   const assignmentClass = ticket?.assigned_resolver_id ? "ticket-emergency-assigned" : "";
   const callBadge = activeVoiceSessionForTicket(ticket) ? `<span class="ticket-call-badge" title="Llamada segura activa o pendiente">📞</span>` : "";
+  const reportCount = Number(ticket?.report_count || 0);
+  const reportBadge = reportCount > 1 ? `<span class="ticket-report-badge" title="${reportCount} reportes ciudadanos">👥${reportCount}</span>` : "";
 
   return L.divIcon({
     className: "",
-    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass}" title="${visual.label}">${visual.icon}${callBadge}<small>${visual.label}</small></div>`,
+    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass}" title="${visual.label}">${visual.icon}${callBadge}${reportBadge}<small>${visual.label}</small></div>`,
     iconSize: [58, 58],
     iconAnchor: [29, 29]
   });
@@ -2037,7 +2084,8 @@ function renderTicket(ticket) {
   const latLng = getVisualLatLng(ticket);
 
   const visual = emergencyVisual(ticket);
-  const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}`;
+  const reportTooltip = Number(ticket.report_count || 0) > 1 ? ` · 👥 ${ticket.report_count} reportes` : "";
+  const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}${reportTooltip}`;
 
   if (!mobileMarkers[ticket.id]) {
 
@@ -2838,6 +2886,22 @@ const shortId = shortTicketId(ticket.id);
 const sourceEventId = ticket.source_event_id || "-";
 
 const communicationHtml = renderCommunications(data.actions);
+const reports = Array.isArray(data.reports) ? data.reports : [];
+const reportCount = Number(ticket.report_count || reports.length || 0);
+const reportsHtml = reports.length
+  ? reports.map((report, index) => `
+      <div class="ticket-report-item ${report.is_primary_report ? "primary" : ""}">
+        <strong>${report.is_primary_report ? "Reporte inicial" : `Reporte ciudadano ${index + 1}`}</strong><br>
+        ${escapeHtml(report.reporter_name || "Vecino")} · ${new Date(report.created_at).toLocaleString()}<br>
+        ${report.title ? `<span>${escapeHtml(report.title)}</span><br>` : ""}
+        ${report.description ? `<span>${escapeHtml(report.description)}</span><br>` : ""}
+        ${report.distance_meters != null ? `<small>Distancia al caso original: ${Math.round(Number(report.distance_meters))} m</small>` : ""}
+      </div>
+    `).join("")
+  : "Sin reportes asociados todavía.";
+const reportsSummaryHtml = reportCount > 1
+  ? `<div class="ticket-report-summary">👥 ${reportCount} vecinos han reportado este mismo incidente. La central opera un solo ticket y usa los reportes como testimonios/antecedentes asociados.</div>`
+  : `<div class="ticket-report-summary">👥 1 reporte ciudadano asociado a este ticket.</div>`;
 const ticketMeta = getTicketCreatedMetadata(data.actions);
 const isPhysicalDevice = isPhysicalSosTicket(ticket);
 const physicalDeviceName = ticketMeta.device_name || ticketMeta.name || ticket.title || "Botón SOS físico";
@@ -3001,6 +3065,7 @@ document.getElementById(
       ${ticket.id}
     </span><br><br>
     <strong>Estado:</strong> ${ticket.state}<br>
+    <strong>Reportes ciudadanos:</strong> ${reportCount || 1}<br>
     <strong>Tipo:</strong> ${emergencyVisual(ticket).icon} ${emergencyVisual(ticket).label}<br>
     <strong>Sector evento:</strong> ${ticketIncidentSector(ticket)}<br>
     ${ticketSectorMetaHtml(ticket)}
@@ -3059,6 +3124,12 @@ ${resolverActionsHtml}
 	<div class="ticket-content-section">
 	<strong>Contactos de emergencia</strong>
 	${contactsHtml || "Sin contactos"}
+</div>
+
+	<div class="ticket-content-section">
+	<strong>Reportes asociados</strong>
+	${reportsSummaryHtml}
+	${reportsHtml}
 </div>
 
 	<div class="ticket-content-section">
