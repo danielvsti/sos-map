@@ -3235,7 +3235,7 @@ const recentSos = visibleDevices.filter(d =>
   d.sos_state === "RECENT"
 ).length;
 
-const mobileSos = visibleOrphanMobileEvents.length;
+const mobileSos = 0;
 
 
 
@@ -3261,13 +3261,14 @@ visibleResolvers.length;
 visibleDevices.forEach(renderDevice);
 visibleSirens.forEach(renderSiren);
 visibleTickets.forEach(renderTicket);
-visibleOrphanMobileEvents.forEach(renderMobileEvent);
+// Mobile events are not rendered as independent markers in the operational map.
+// They are shown inside the ticket as associated citizen reports.
 visibleResolvers.forEach(renderResolver);
 
 cleanupMarkers(deviceMarkers, visibleDevices.map(d => d.id));
 cleanupMarkers(sirenMarkers, visibleSirens.map(s => s.id));
 cleanupMarkers(mobileMarkers, visibleTickets.map(t => t.id));
-cleanupMarkers(mobileEventMarkers, visibleOrphanMobileEvents.map(e => e.id));
+cleanupMarkers(mobileEventMarkers, []);
 cleanupMarkers(resolverMarkers, visibleResolvers.map(r => r.id));
 
 if (!userMovedMap) {
