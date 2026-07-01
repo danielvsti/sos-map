@@ -1093,7 +1093,7 @@ const SOS_CONFIG = window.SOS_CONFIG || {};
 const API_BASE = SOS_CONFIG.API_BASE || "https://sos.vsti.cl";
 const CONTROL_CENTER_CODE = SOS_CONFIG.CONTROL_CENTER_CODE || "CC-VINA";
 const MAP_STATE_URL = `${API_BASE}/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
-const PUBLIC_MAP_STATE_URL = `${API_BASE}/public/map-state`;
+const PUBLIC_MAP_STATE_URL = `${API_BASE}/public/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
 const TICKET_URL = `${API_BASE}/tickets`;
 const SIREN_ACTIVATE_URL = `${API_BASE}/public/sirens/activate`;
 const SIREN_DEACTIVATE_URL = `${API_BASE}/public/sirens/deactivate`;
@@ -1540,7 +1540,20 @@ let currentOperatorVoice = { session: null, ua: null, call: null };
 let currentSirens = [];
 let currentResolvers = [];
 let currentTickets = [];
+let currentPlatformSettings = null;
 let knownOperatorVoiceSessionIds = new Set(JSON.parse(localStorage.getItem("operator_known_voice_session_ids") || "[]"));
+
+
+
+function platformFeatureEnabled(key, fallback = true) {
+  const value = currentPlatformSettings?.features?.[key];
+  return value == null ? fallback : value === true;
+}
+
+function platformPolicyValue(section, key, fallback = null) {
+  const value = currentPlatformSettings?.[section]?.[key];
+  return value == null ? fallback : value;
+}
 
 function activeVoiceSessionForTicket(ticket) {
   if (!ticket) return null;
@@ -2965,8 +2978,14 @@ const assignmentButtonHtml = needsAssignment
   ? `<button class="btn-secondary" onclick="openAssignmentModal('assign')">👮 Asignar resolutor</button>`
   : (canManualReassign ? `<button class="btn-secondary" onclick="openAssignmentModal('reassign')">🔁 Reasignar resolutor</button>` : "");
 
-const centralIncomingVoice = isCentralIncomingVoice(ticket);
-const resolverVoiceWaiting = isResolverVoiceWaiting(ticket);
+const sirenControlsEnabled = platformFeatureEnabled("sirens_enabled", true);
+const secureVoiceEnabled = platformFeatureEnabled("secure_voice_enabled", true);
+const sirenActionButtonHtml = sirenControlsEnabled
+  ? `<button onclick="activateNearestSiren()">🚨 Activar sirena</button>`
+  : `<button disabled style="background:#9ca3af;cursor:not-allowed;">🚨 Sirenas deshabilitadas</button>`;
+
+const centralIncomingVoice = secureVoiceEnabled && isCentralIncomingVoice(ticket);
+const resolverVoiceWaiting = secureVoiceEnabled && isResolverVoiceWaiting(ticket);
 const activeVoice = activeVoiceSessionForTicket(ticket);
 const activeVoiceId = activeVoice?.id || activeVoice?.wa_center_session_id || "latest";
 const voiceBannerHtml = centralIncomingVoice
@@ -2974,15 +2993,15 @@ const voiceBannerHtml = centralIncomingVoice
   : resolverVoiceWaiting
     ? `<div class="operator-incoming-voice-banner" style="background:#eff6ff;border-color:#93c5fd;color:#1e3a8a;animation:none;">📞 Vecino pidió hablar con el resolutor<span>Esperando que ${escapeHtml(ticket.resolver_name || "el resolutor asignado")} atienda desde la App Resolutor.</span></div>`
     : "";
-const centralVoiceActionsHtml = centralIncomingVoice
-  ? `<button class="btn-secondary" onclick="joinOperatorVoiceSession('${escapeHtml(activeVoiceId)}')">☎️ Atender llamada del vecino</button>`
-  : `<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Llamar vecino desde central</button>`;
+const centralVoiceActionsHtml = !secureVoiceEnabled
+  ? `<button class="btn-secondary" disabled style="background:#9ca3af;cursor:not-allowed;">📞 Llamadas deshabilitadas</button>`
+  : (centralIncomingVoice
+    ? `<button class="btn-secondary" onclick="joinOperatorVoiceSession('${escapeHtml(activeVoiceId)}')">☎️ Atender llamada del vecino</button>`
+    : `<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Llamar vecino desde central</button>`);
 
 const resolverActionsHtml = isPhysicalDevice
   ? `
-<button onclick="activateNearestSiren()">
-  🚨 Activar sirena
-</button>
+${sirenActionButtonHtml}
 ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 ${physicalPhoneClean
@@ -2994,14 +3013,13 @@ ${physicalPhoneClean
 </div>
 `
   : `
-<button onclick="activateNearestSiren()">
-  🚨 Activar sirena
-</button>
+${sirenActionButtonHtml}
 ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 ${voiceBannerHtml}
 ${centralVoiceActionsHtml}
 
+${secureVoiceEnabled ? `
 <div class="voice-call-panel">
   <strong>WA-Center WebRTC</strong>
   <div id="operatorVoiceStatus">Listo. Si llamas desde central o atiendes una llamada entrante, el estado cambiará a “En llamada segura”.</div>
@@ -3012,7 +3030,7 @@ ${centralVoiceActionsHtml}
 
 <div class="operator-voice-note">
   Si el vecino pidió hablar con el resolutor, la llamada debe atenderla el resolutor desde su app. La central solo atiende llamadas dirigidas a central.
-</div>`;
+</div>` : `<div class="operator-voice-note">Las llamadas seguras están deshabilitadas por política del centro de control.</div>`}`;
 
 
 document.getElementById(
@@ -3180,6 +3198,7 @@ fetch(PUBLIC_MAP_STATE_URL)
 
 const data = await dashboardRes.json();
 const publicData = await publicRes.json();
+currentPlatformSettings = publicData.platform_settings || currentPlatformSettings || null;
 
 const controlCenter = data.control_center || null;
 drawMunicipalBoundary(controlCenter);
