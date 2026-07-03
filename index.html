@@ -938,6 +938,179 @@ width: 100%;
 .voice-call-panel .voice-call-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
 .voice-call-panel button { font-size:13px; padding:7px 10px; border-radius:10px; }
 
+
+/* ==========================================================================
+   REDISEÑO UI/UX v6 — SOS-MAP: "command center" visual (Operador central)
+   Capa 100% aditiva: ninguna regla anterior fue eliminada ni renombrada.
+   No se tocó el bloque de JavaScript ni ningún ID. Solo presentación (CSS)
+   + 1 bloque HTML puramente decorativo (leyenda de categorías, sin lógica).
+   ========================================================================== */
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* --- Top bar operacional (antes: tarjeta vertical alta que tapaba el mapa) ---
+   Se convierte el mismo elemento .panel en una barra horizontal compacta,
+   tipo "command center", para que el mapa gane protagonismo. */
+.panel {
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  width: auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  padding: 10px 20px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, .92);
+  color: #e2e8f0;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, .35);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: 14px;
+}
+.panel .logo-vsti {
+  width: 92px;
+  margin: 0 18px 0 0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.panel .panel-title {
+  color: #fff;
+  font-size: 15px;
+  margin: 0 18px 0 0;
+  padding-right: 18px;
+  border-right: 1px solid rgba(255,255,255,.18);
+}
+.panel .panel-small {
+  font-size: 13px;
+  color: #cbd5e1;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.panel .panel-small span { color: #fff; font-weight: 900; margin-left: 4px; }
+.panel #status.online { color: #4ade80; }
+.panel #status.offline { color: #f87171; }
+
+/* La rueda de zoom de Leaflet estaba calibrada para el panel alto anterior */
+.leaflet-control-zoom {
+  margin-top: 96px !important;
+  margin-left: 18px !important;
+}
+
+/* --- Panel derecho de ticket: dock lateral tipo command center --- */
+.ticket-panel {
+  top: 96px;
+  right: 18px;
+  width: 440px;
+  max-height: calc(100vh - 116px);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .28);
+  border: 1px solid #e5e7eb;
+}
+.ticket-header {
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #fff;
+  padding: 16px 18px;
+}
+.ticket-header button {
+  color: #fff;
+  background: rgba(255,255,255,.12) !important;
+  border-radius: 10px;
+  width: 32px; height: 32px;
+}
+.ticket-content-section { padding: 18px; }
+.ticket-id-box { border-radius: 14px; }
+.ticket-actions button {
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(37,99,235,.20);
+  transition: transform .1s ease, box-shadow .15s ease;
+}
+.ticket-actions button:active { transform: scale(.97); }
+.ticket-actions button.btn-secondary { box-shadow: 0 6px 16px rgba(37,99,235,.14); }
+.btn-siren { border-radius: 12px; box-shadow: 0 8px 20px rgba(220,38,38,.28); }
+.contact-card, .comm-card { border-radius: 14px; border: 1px solid #eef0f4; }
+.timeline-item { border-left-width: 3px; padding-left: 14px; }
+
+/* --- Botón/panel de filtros: alineado bajo la nueva barra superior --- */
+.map-filter-button { top: 18px; box-shadow: 0 10px 28px rgba(15,23,42,.32); }
+.map-filter-panel { top: 72px; border-radius: 20px; }
+
+/* --- Modal de asignación / llamada / login: pulido de elevación --- */
+.assignment-dialog, .call-panel, .login-card { box-shadow: 0 30px 80px rgba(0,0,0,.4); }
+.assignment-row { transition: transform .1s ease, border-color .15s ease; }
+.assignment-row:active { transform: scale(.99); }
+.login-card { border-top: 6px solid #2563eb; }
+.login-overlay { background: rgba(8,12,22,.86); }
+
+/* --- Marcadores: leve pulido de sombra para más jerarquía sobre el mapa --- */
+.resolver-marker-available, .resolver-marker-busy, .resolver-marker-enroute,
+.resolver-marker-onsite, .resolver-marker-stale, .resolver-marker-offline,
+.resolver-marker-invalid, .siren-marker, .siren-marker-active {
+  box-shadow: 0 4px 12px rgba(0,0,0,.45), 0 0 0 2px rgba(255,255,255,.6);
+}
+.ticket-active, .ticket-assigned, .ticket-acknowledged, .ticket-default,
+.ticket-physical-sos, .ticket-emergency-marker {
+  box-shadow: 0 4px 16px rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.55);
+}
+
+/* --- Leyenda de categorías (decorativa, no interactúa con app.js) --- */
+.map-legend-box {
+  position: absolute;
+  left: 18px;
+  bottom: 20px;
+  z-index: 850;
+  background: rgba(15, 23, 42, .92);
+  color: #e2e8f0;
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: 0 16px 40px rgba(15,23,42,.35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 6px 16px;
+  max-width: calc(100vw - 36px);
+}
+.map-legend-box strong {
+  grid-column: 1 / -1;
+  color: #fff;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: 2px;
+}
+.map-legend-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.map-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; border: 2px solid rgba(255,255,255,.7); }
+.map-legend-dot.sos { background: #dc2626; }
+.map-legend-dot.medical { background: #2563eb; }
+.map-legend-dot.fire { background: #ea580c; }
+.map-legend-dot.security { background: #7c3aed; }
+.map-legend-dot.vif { background: #be185d; }
+.map-legend-dot.fall { background: #0891b2; }
+.map-legend-dot.risk { background: #eab308; }
+.map-legend-dot.resolver { background: #16a34a; }
+.map-legend-dot.siren { background: #334155; }
+
+@media (max-width: 1280px) {
+  .ticket-panel { width: 380px; }
+  .map-legend-box { grid-template-columns: repeat(3, auto); }
+}
+@media (max-width: 1024px) {
+  .panel { font-size: 13px; gap: 4px 14px; }
+  .panel .panel-title { display:none; }
+  .ticket-panel { width: min(360px, calc(100vw - 36px)); }
+  .map-legend-box { display: none; }
+}
+
 </style>
 </head>
 
@@ -1073,6 +1246,20 @@ Total nodos:
 </div>
 
 
+
+<div class="map-legend-box" aria-hidden="true">
+  <strong>Leyenda</strong>
+  <span class="map-legend-item"><span class="map-legend-dot sos"></span>SOS / activo</span>
+  <span class="map-legend-item"><span class="map-legend-dot medical"></span>Médica</span>
+  <span class="map-legend-item"><span class="map-legend-dot fire"></span>Incendio</span>
+  <span class="map-legend-item"><span class="map-legend-dot security"></span>Seguridad</span>
+  <span class="map-legend-item"><span class="map-legend-dot vif"></span>VIF</span>
+  <span class="map-legend-item"><span class="map-legend-dot fall"></span>Caída</span>
+  <span class="map-legend-item"><span class="map-legend-dot risk"></span>Riesgo</span>
+  <span class="map-legend-item"><span class="map-legend-dot resolver"></span>Resolutor</span>
+  <span class="map-legend-item"><span class="map-legend-dot siren"></span>Sirena</span>
+</div>
+
 <div id="ticketPanel" class="ticket-panel hidden">
 <div class="ticket-header">
 <span id="ticketTitle">Ticket</span>
@@ -1091,9 +1278,20 @@ Selecciona una emergencia.
 <script>
 const SOS_CONFIG = window.SOS_CONFIG || {};
 const API_BASE = SOS_CONFIG.API_BASE || "https://sos.vsti.cl";
-const CONTROL_CENTER_CODE = SOS_CONFIG.CONTROL_CENTER_CODE || "CC-VINA";
-const MAP_STATE_URL = `${API_BASE}/dashboard/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
-const PUBLIC_MAP_STATE_URL = `${API_BASE}/public/map-state?control_center_code=${CONTROL_CENTER_CODE}`;
+const CONTROL_CENTER_CODE = SOS_CONFIG.CONTROL_CENTER_CODE || new URLSearchParams(location.search).get("cc") || "CC-VINA";
+let activeControlCenterCode = CONTROL_CENTER_CODE;
+function currentControlCenterCode() {
+  if (panelSessionUser?.role === "SUPER_ADMIN") {
+    return String(new URLSearchParams(location.search).get("cc") || activeControlCenterCode || panelSessionUser?.control_center_code || CONTROL_CENTER_CODE).trim().toUpperCase();
+  }
+  return String(panelSessionUser?.control_center_code || activeControlCenterCode || CONTROL_CENTER_CODE).trim().toUpperCase();
+}
+function mapStateUrl() {
+  return `${API_BASE}/dashboard/map-state?control_center_code=${encodeURIComponent(currentControlCenterCode())}`;
+}
+function publicMapStateUrl() {
+  return `${API_BASE}/public/map-state?control_center_code=${encodeURIComponent(currentControlCenterCode())}`;
+}
 const TICKET_URL = `${API_BASE}/tickets`;
 const SIREN_ACTIVATE_URL = `${API_BASE}/public/sirens/activate`;
 const SIREN_DEACTIVATE_URL = `${API_BASE}/public/sirens/deactivate`;
@@ -1143,10 +1341,11 @@ document.getElementById("panelLogoutButton").style.display = "none";
 
 function showControlPanel(user) {
 panelSessionUser = user || panelSessionUser;
+activeControlCenterCode = currentControlCenterCode();
 document.getElementById("loginOverlay").classList.add("hidden");
 const pill = document.getElementById("operatorSession");
 pill.style.display = "block";
-pill.textContent = `${panelSessionUser?.full_name || "Operador"} · ${panelSessionUser?.role || "OPERATOR"}`;
+pill.textContent = `${panelSessionUser?.full_name || "Operador"} · ${panelSessionUser?.role || "OPERATOR"} · ${currentControlCenterCode()}`;
 document.getElementById("panelLogoutButton").style.display = "block";
 }
 
@@ -1207,8 +1406,8 @@ if (!res.ok || data.status !== "ok") {
 throw new Error(data.message || "Sesión inválida");
 }
 
-if (!["OPERATOR", "ADMIN"].includes(data.user.role)) {
-throw new Error("Este panel requiere rol OPERATOR o ADMIN.");
+if (!["OPERATOR", "ADMIN", "SUPER_ADMIN"].includes(data.user.role)) {
+throw new Error("Este panel requiere rol OPERATOR, ADMIN o SUPER_ADMIN.");
 }
 
 showControlPanel(data.user);
@@ -3193,8 +3392,8 @@ alert("No fue posible cargar el ticket");
 async function loadMapState() {
 try {
 const [dashboardRes, publicRes] = await Promise.all([
-fetch(MAP_STATE_URL, { headers: authHeaders() }),
-fetch(PUBLIC_MAP_STATE_URL)
+fetch(mapStateUrl(), { headers: authHeaders() }),
+fetch(publicMapStateUrl())
 ]);
 
 const data = await dashboardRes.json();
