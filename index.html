@@ -26,10 +26,7 @@ padding: 18px 22px;
 .online { color: green; font-weight: bold; }
 .offline { color: red; font-weight: bold; }
 
-.leaflet-control-zoom {
-	margin-top: 430px !important;
-	margin-left: 32px !important;
-}
+
 
 .logo-vsti {
 width: 260px;
@@ -998,10 +995,7 @@ html, body {
 .panel #status.offline { color: #f87171; }
 
 /* La rueda de zoom de Leaflet estaba calibrada para el panel alto anterior */
-.leaflet-control-zoom {
-  margin-top: 96px !important;
-  margin-left: 18px !important;
-}
+
 
 /* --- Panel derecho de ticket: dock lateral tipo command center --- */
 .ticket-panel {
@@ -1109,6 +1103,27 @@ html, body {
   .panel .panel-title { display:none; }
   .ticket-panel { width: min(360px, calc(100vw - 36px)); }
   .map-legend-box { display: none; }
+}
+
+
+/* --- Fix SOS-MAP: zoom único + botón logout compacto --- */
+
+
+.btn-logout {
+  width: auto;
+  min-width: 0;
+  max-width: max-content;
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.panel #panelLogoutButton.btn-logout {
+  width: auto;
 }
 
 </style>
@@ -1346,7 +1361,7 @@ document.getElementById("loginOverlay").classList.add("hidden");
 const pill = document.getElementById("operatorSession");
 pill.style.display = "block";
 pill.textContent = `${panelSessionUser?.full_name || "Operador"} · ${panelSessionUser?.role || "OPERATOR"} · ${currentControlCenterCode()}`;
-document.getElementById("panelLogoutButton").style.display = "block";
+document.getElementById("panelLogoutButton").style.display = "inline-flex";
 }
 
 async function panelLogin() {
@@ -1562,7 +1577,7 @@ function initMapFilters() {
 }
 
 
-const map = L.map("map").setView(
+const map = L.map("map", { zoomControl: false }).setView(
 	DEFAULT_CENTER,
 	DEFAULT_ZOOM
 	);
@@ -1684,6 +1699,7 @@ function focusMapOnMunicipality(controlCenter, force = false) {
 }
 
 
+try { if (map.zoomControl) map.removeControl(map.zoomControl); } catch (_) {}
 L.control.zoom({ position: "topleft" }).addTo(map);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -3236,6 +3252,9 @@ ${secureVoiceEnabled ? `
 const panelVisual = isPhysicalDevice
   ? { icon: "🆘", label: "SOS" }
   : emergencyVisual(ticket);
+
+const headerVisual = emergencyVisual(ticket);
+const headerIcon = headerVisual?.icon || "🚨";
 
 document.getElementById(
 		"ticketTitle"
