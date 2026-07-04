@@ -1126,6 +1126,408 @@ html, body {
   width: auto;
 }
 
+
+/* --- FIX SOS-MAP UIX: controles de mapa bajo barra superior --- */
+:root {
+  --sos-map-controls-top: 170px;
+}
+
+.panel {
+  z-index: 1300 !important;
+}
+
+/* Zoom Leaflet: nunca encima del logo/header */
+.leaflet-top.leaflet-left {
+  top: var(--sos-map-controls-top) !important;
+  left: 24px !important;
+}
+
+.leaflet-control-zoom {
+  margin-top: 0 !important;
+  margin-left: 0 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .22) !important;
+}
+
+.leaflet-control-zoom a {
+  width: 42px !important;
+  height: 42px !important;
+  line-height: 40px !important;
+  font-size: 24px !important;
+}
+
+/* Botón filtros: fuera del header, compacto y flotante */
+.map-filter-button {
+  top: var(--sos-map-controls-top) !important;
+  right: 28px !important;
+  height: 46px !important;
+  min-width: 132px !important;
+  padding: 0 18px !important;
+  border-radius: 999px !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  z-index: 1150 !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .26) !important;
+}
+
+/* Panel filtros debajo del botón */
+.map-filter-panel {
+  top: calc(var(--sos-map-controls-top) + 58px) !important;
+  right: 28px !important;
+  z-index: 1150 !important;
+}
+
+/* Cerrar sesión compacto dentro del header */
+.btn-logout,
+#panelLogoutButton {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  height: 38px !important;
+  margin: 0 !important;
+  padding: 0 18px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 900px) {
+  .leaflet-top.leaflet-left {
+    left: 18px !important;
+  }
+
+  .map-filter-button {
+    right: 18px !important;
+    min-width: 112px !important;
+    height: 42px !important;
+    font-size: 15px !important;
+    padding: 0 14px !important;
+  }
+
+  .map-filter-panel {
+    right: 18px !important;
+    width: min(330px, calc(100vw - 36px)) !important;
+  }
+}
+
+
+/* --- FIX SOS-MAP UIX: panel superior liviano municipal --- */
+
+/* Panel superior más liviano: blanco translúcido + borde suave */
+.panel {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.36) !important;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16) !important;
+  backdrop-filter: blur(14px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
+}
+
+/* Textos del panel */
+.panel,
+.panel div,
+.panel span,
+.panel strong,
+.panel b {
+  color: #0f172a;
+}
+
+/* Título principal */
+.panel .title,
+.panel .brand-title,
+.panel h1,
+.panel h2 {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+/* Separadores más suaves */
+.panel .divider,
+.panel hr {
+  border-color: rgba(100, 116, 139, 0.24) !important;
+  background: rgba(100, 116, 139, 0.24) !important;
+}
+
+/* Logo con tarjeta blanca limpia */
+.panel img,
+.panel .logo,
+.panel .brand-logo {
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Píldora de usuario / centro de control */
+.panel .pill,
+.panel .user-pill,
+.panel [class*="pill"] {
+  background: #e0f2fe !important;
+  color: #075985 !important;
+  border: 1px solid rgba(14, 165, 233, 0.28) !important;
+  box-shadow: none !important;
+}
+
+/* Estado conectado debe seguir destacando en verde */
+.panel .connected,
+.panel .online,
+.panel .status-online,
+.panel [class*="connected"],
+.panel [class*="online"] {
+  color: #16a34a !important;
+  font-weight: 900 !important;
+}
+
+/* Botón cerrar sesión compacto, no dominante */
+.btn-logout,
+#panelLogoutButton {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  box-shadow: none !important;
+}
+
+.btn-logout:hover,
+#panelLogoutButton:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Botón filtros liviano, sin bloque oscuro pesado */
+.map-filter-button {
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.38) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Panel de filtros también claro */
+.map-filter-panel {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.36) !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+/* Leyenda menos pesada */
+.legend,
+.map-legend {
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.36) !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.legend *,
+.map-legend * {
+  color: #0f172a !important;
+}
+
+/* Mantener controles Leaflet limpios sobre mapa */
+.leaflet-control-zoom {
+  border: 1px solid rgba(148, 163, 184, 0.38) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16) !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #f1f5f9 !important;
+}
+
+/* --- END FIX SOS-MAP UIX: panel superior liviano municipal --- */
+
+
+/* --- FIX SOS-MAP UIX: header municipal refinado --- */
+
+:root {
+  --sos-map-controls-top: 166px;
+}
+
+/* Header menos pesado, más institucional y no full-width extremo */
+.panel {
+  width: min(1540px, calc(100vw - 48px)) !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  top: 22px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14) !important;
+  backdrop-filter: blur(12px) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.12) !important;
+  padding-right: 210px !important;
+}
+
+/* Recupera legibilidad: el bloque anterior de UIX dejó varios textos blancos */
+.panel,
+.panel *,
+.panel span,
+.panel div,
+.panel strong,
+.panel b {
+  color: #334155 !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+/* Títulos principales */
+.panel h1,
+.panel h2,
+.panel .title,
+.panel .brand-title {
+  color: #0f172a !important;
+  font-weight: 850 !important;
+}
+
+/* Números e indicadores */
+.panel strong,
+.panel b,
+.panel .metric-value,
+.panel [class*="value"],
+.panel [class*="count"],
+.panel [class*="total"] {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+}
+
+/* Estado conectado */
+.panel .connected,
+.panel .online,
+.panel .status-online,
+.panel [class*="connected"],
+.panel [class*="online"] {
+  color: #16a34a !important;
+  font-weight: 900 !important;
+}
+
+/* Píldora usuario/centro */
+.panel .pill,
+.panel .user-pill,
+.panel [class*="pill"] {
+  background: #e0f2fe !important;
+  color: #075985 !important;
+  border: 1px solid rgba(14, 165, 233, 0.34) !important;
+  box-shadow: none !important;
+}
+
+/* Botón cerrar sesión compacto */
+.btn-logout,
+#panelLogoutButton {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  height: 38px !important;
+  padding: 0 18px !important;
+  border-radius: 999px !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border: 1px solid rgba(148, 163, 184, 0.55) !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  flex: 0 0 auto !important;
+}
+
+/* Filtros arriba, limpio, sin aplastar el header */
+.map-filter-button {
+  top: 44px !important;
+  right: max(42px, calc((100vw - 1540px) / 2 + 42px)) !important;
+  height: 52px !important;
+  min-width: 148px !important;
+  padding: 0 22px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #0f172a !important;
+  border: 2px solid rgba(37, 99, 235, 0.82) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18) !important;
+  z-index: 1450 !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Panel de filtros debajo del botón */
+.map-filter-panel {
+  top: 112px !important;
+  right: max(42px, calc((100vw - 1540px) / 2 + 42px)) !important;
+  z-index: 1450 !important;
+}
+
+/* Zoom bajo el header */
+.leaflet-top.leaflet-left {
+  top: var(--sos-map-controls-top) !important;
+  left: 28px !important;
+}
+
+.leaflet-control-zoom {
+  margin-top: 0 !important;
+  margin-left: 0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16) !important;
+}
+
+.leaflet-control-zoom a {
+  width: 42px !important;
+  height: 42px !important;
+  line-height: 40px !important;
+  font-size: 24px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #0f172a !important;
+}
+
+/* Leyenda clara */
+.legend,
+.map-legend {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.38) !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.15) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.legend *,
+.map-legend * {
+  color: #0f172a !important;
+  opacity: 1 !important;
+}
+
+/* En pantallas más chicas, no dejes el filtro encima de textos */
+@media (max-width: 1180px) {
+  .panel {
+    padding-right: 24px !important;
+  }
+
+  .map-filter-button {
+    top: var(--sos-map-controls-top) !important;
+    right: 24px !important;
+  }
+
+  .map-filter-panel {
+    top: calc(var(--sos-map-controls-top) + 62px) !important;
+    right: 24px !important;
+  }
+}
+
+/* --- END FIX SOS-MAP UIX: header municipal refinado --- */
+
 </style>
 </head>
 
@@ -3599,5 +4001,27 @@ document.getElementById("panelLogoutButton").addEventListener("click", logoutPan
 initMapFilters();
 checkPanelSession();
 </script>
+
+<script>
+(function syncSosMapChromeLayout() {
+  function sync() {
+    var panel = document.querySelector(".panel");
+    if (!panel) return;
+
+    var rect = panel.getBoundingClientRect();
+    var top = Math.ceil(rect.bottom + 18);
+
+    if (!Number.isFinite(top) || top < 120) top = 170;
+
+    document.documentElement.style.setProperty("--sos-map-controls-top", top + "px");
+  }
+
+  window.addEventListener("load", sync);
+  window.addEventListener("resize", sync);
+  setTimeout(sync, 250);
+  setTimeout(sync, 1000);
+})();
+</script>
+
 </body>
 </html>
