@@ -3233,11 +3233,15 @@ ${secureVoiceEnabled ? `
 </div>` : `<div class="operator-voice-note">Las llamadas seguras están deshabilitadas por política del centro de control.</div>`}`;
 
 
+const panelVisual = isPhysicalDevice
+  ? { icon: "🆘", label: "SOS" }
+  : emergencyVisual(ticket);
+
 document.getElementById(
 		"ticketTitle"
 		).innerHTML = `
 <div>
-  <div>🚨 ${ticket.title}</div>
+  <div>${panelVisual.icon} ${escapeHtml(ticket.title || panelVisual.label || "Ticket SOS")}</div>
   <div style="font-size:14px;color:#6b7280;font-weight:normal;">
     Ticket ${shortId}
   </div>
