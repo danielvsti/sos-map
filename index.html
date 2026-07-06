@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
+<meta name="app-version" content="v7-central-call-lifecycle" />
 <title>VSTI SOS - Mapa</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
@@ -934,6 +935,55 @@ width: 100%;
 .voice-call-panel strong { display:block; margin-bottom:4px; }
 .voice-call-panel .voice-call-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
 .voice-call-panel button { font-size:13px; padding:7px 10px; border-radius:10px; }
+
+.operator-call-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, .72);
+  backdrop-filter: blur(8px);
+}
+.operator-call-overlay.hidden { display: none; }
+.operator-call-card {
+  width: min(430px, 100%);
+  padding: 30px;
+  border-radius: 28px;
+  background: #0f172a;
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, .5);
+}
+.operator-call-card .call-icon {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #1e293b;
+  font-size: 42px;
+}
+.operator-call-card h2 { margin: 0 0 8px; font-size: 30px; }
+.operator-call-card .call-case { color: #bfdbfe; font-weight: 900; margin-bottom: 14px; }
+.operator-call-card .call-message { min-height: 48px; color: #cbd5e1; font-size: 17px; line-height: 1.4; }
+.operator-call-card .call-timer { margin: 12px 0 18px; font-size: 38px; font-weight: 950; }
+.operator-call-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+.operator-call-actions button {
+  min-height: 54px;
+  border: 0;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.operator-call-actions .answer { background: #16a34a; color: #fff; }
+.operator-call-actions .reject,
+.operator-call-actions .hangup { background: #dc2626; color: #fff; }
+.operator-call-actions .mute { background: #e2e8f0; color: #0f172a; }
+.operator-call-actions button[hidden] { display: none; }
 
 
 /* ==========================================================================
@@ -2694,13 +2744,38 @@ const mobileEventMarkers = {};
 const resolverMarkers = {};
 let selectedTicket = null;
 let selectedMobileEvent = null;
-let currentOperatorVoice = { session: null, ua: null, call: null };
+let currentOperatorVoice = createOperatorVoiceState();
 let currentSirens = [];
 let currentResolvers = [];
 let currentTickets = [];
 let currentPlatformSettings = null;
 let knownOperatorVoiceSessionIds = new Set(JSON.parse(localStorage.getItem("operator_known_voice_session_ids") || "[]"));
 
+function createOperatorVoiceState() {
+  return {
+    session: null,
+    ticketId: null,
+    ticket: null,
+    sessionId: null,
+    ua: null,
+    call: null,
+    peerConnection: null,
+    state: "IDLE",
+    direction: null,
+    muted: false,
+    connectedAt: null,
+    connectedReported: false,
+    backendFinalized: false,
+    cleanupPromise: null,
+    ringInterval: null,
+    ringContexts: new Set(),
+    statusPollTimer: null,
+    noAnswerTimer: null,
+    durationTimer: null
+  };
+}
+
+const OPERATOR_VOICE_TERMINAL = new Set(["ENDED", "FAILED", "NO_ANSWER", "REJECTED"]);
 
 
 function platformFeatureEnabled(key, fallback = true) {
@@ -2716,11 +2791,11 @@ function platformPolicyValue(section, key, fallback = null) {
 function activeVoiceSessionForTicket(ticket) {
   if (!ticket) return null;
   const sessions = Array.isArray(ticket.voice_sessions) ? ticket.voice_sessions : [];
-  const fromList = sessions.find((session) => !["FAILED", "ENDED", "EXPIRED", "NO_ANSWER"].includes(String(session.status || "").toUpperCase()));
+  const fromList = sessions.find((session) => !["FAILED", "ENDED", "EXPIRED", "NO_ANSWER", "REJECTED"].includes(String(session.status || "").toUpperCase()));
   if (fromList) return fromList;
   if (!ticket.voice_session_id && !ticket.wa_center_session_id) return null;
   const status = String(ticket.voice_status || "CREATED").toUpperCase();
-  if (["FAILED", "ENDED", "EXPIRED", "NO_ANSWER"].includes(status)) return null;
+  if (["FAILED", "ENDED", "EXPIRED", "NO_ANSWER", "REJECTED"].includes(status)) return null;
   return {
     id: ticket.voice_session_id,
     wa_center_session_id: ticket.wa_center_session_id,
@@ -2759,23 +2834,116 @@ function playOperatorRing() {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     const ctx = new AudioContext();
+    const contexts = currentOperatorVoice.ringContexts;
+    contexts.add(ctx);
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.03);
+    gain.gain.setValueAtTime(0.22, ctx.currentTime + 0.72);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.85);
     gain.connect(ctx.destination);
-    [0, .28, .56].forEach((offset) => {
+    [440, 480].forEach((frequency) => {
       const osc = ctx.createOscillator();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(720, ctx.currentTime + offset);
+      osc.frequency.setValueAtTime(frequency, ctx.currentTime);
       osc.connect(gain);
-      osc.start(ctx.currentTime + offset);
-      osc.stop(ctx.currentTime + offset + .18);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + .88);
     });
-    setTimeout(() => ctx.close().catch(() => null), 1500);
+    setTimeout(() => {
+      contexts.delete(ctx);
+      ctx.close().catch(() => null);
+    }, 1100);
   } catch (error) {
     console.warn("No se pudo reproducir ring de operador", error);
   }
+}
+
+function startOperatorRing() {
+  if (currentOperatorVoice.ringInterval) return;
+  playOperatorRing();
+  currentOperatorVoice.ringInterval = setInterval(playOperatorRing, 3000);
+}
+
+function stopOperatorRing() {
+  clearInterval(currentOperatorVoice.ringInterval);
+  currentOperatorVoice.ringInterval = null;
+  currentOperatorVoice.ringContexts.forEach((context) => {
+    try { context.close().catch(() => null); } catch {}
+  });
+  currentOperatorVoice.ringContexts.clear();
+}
+
+function ensureOperatorCallOverlay() {
+  let overlay = document.getElementById("operatorCallOverlay");
+  if (overlay) return overlay;
+  overlay = document.createElement("div");
+  overlay.id = "operatorCallOverlay";
+  overlay.className = "operator-call-overlay hidden";
+  overlay.innerHTML = `
+    <section class="operator-call-card" role="dialog" aria-modal="true" aria-labelledby="operatorCallTitle">
+      <div class="call-icon" aria-hidden="true">☎️</div>
+      <h2 id="operatorCallTitle">Llamada</h2>
+      <div id="operatorCallCase" class="call-case"></div>
+      <p id="operatorCallMessage" class="call-message"></p>
+      <div id="operatorCallTimer" class="call-timer" hidden>00:00</div>
+      <div class="operator-call-actions">
+        <button id="operatorRejectButton" class="reject" onclick="rejectOperatorVoice()">Rechazar</button>
+        <button id="operatorAnswerButton" class="answer" onclick="answerOperatorVoice()">Contestar</button>
+        <button id="operatorMuteButton" class="mute" onclick="toggleOperatorVoiceMute()" hidden>🎙️ Silenciar</button>
+        <button id="operatorHangupButton" class="hangup" onclick="stopOperatorVoice()" hidden>Colgar</button>
+      </div>
+      <audio id="operatorRemoteAudio" autoplay playsinline></audio>
+    </section>`;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function setOperatorVoiceState(state, options = {}) {
+  currentOperatorVoice.state = state;
+  const overlay = ensureOperatorCallOverlay();
+  overlay.classList.toggle("hidden", state === "IDLE");
+  const incoming = currentOperatorVoice.direction === "incoming" && state === "RINGING";
+  const connected = state === "CONNECTED";
+  const terminal = OPERATOR_VOICE_TERMINAL.has(state);
+  const title = document.getElementById("operatorCallTitle");
+  const message = document.getElementById("operatorCallMessage");
+  const caseLabel = document.getElementById("operatorCallCase");
+  const timer = document.getElementById("operatorCallTimer");
+  if (options.title) title.textContent = options.title;
+  if (options.message) message.textContent = options.message;
+  caseLabel.textContent = currentOperatorVoice.ticketId
+    ? `Caso ${shortTicketId(currentOperatorVoice.ticketId)}`
+    : "";
+  document.getElementById("operatorRejectButton").hidden = !incoming;
+  document.getElementById("operatorAnswerButton").hidden = !incoming;
+  document.getElementById("operatorMuteButton").hidden = !connected;
+  document.getElementById("operatorHangupButton").hidden = terminal;
+  timer.hidden = !connected;
+  operatorVoiceStatus(options.message || "");
+}
+
+function prepareOperatorIncomingVoice(ticket) {
+  const session = activeVoiceSessionForTicket(ticket);
+  const sessionId = session?.id || session?.wa_center_session_id || null;
+  if (!sessionId) return;
+  if (String(currentOperatorVoice.sessionId || "") === String(sessionId) &&
+      !OPERATOR_VOICE_TERMINAL.has(currentOperatorVoice.state)) return;
+  if (currentOperatorVoice.sessionId && !OPERATOR_VOICE_TERMINAL.has(currentOperatorVoice.state) &&
+      currentOperatorVoice.state !== "IDLE") return;
+
+  currentOperatorVoice = createOperatorVoiceState();
+  currentOperatorVoice.session = session;
+  currentOperatorVoice.sessionId = sessionId;
+  currentOperatorVoice.ticketId = ticket.id;
+  currentOperatorVoice.ticket = ticket;
+  currentOperatorVoice.direction = "incoming";
+  setOperatorVoiceState("RINGING", {
+    title: "Llamada entrante del vecino",
+    message: `${ticket.citizen_name || "El vecino"} desea comunicarse con la central.`
+  });
+  startOperatorRing();
+  startOperatorVoiceTimers();
 }
 
 function showOperatorIncomingVoiceAlert(ticket) {
@@ -2803,6 +2971,18 @@ function showOperatorIncomingVoiceAlert(ticket) {
 
 function notifyOperatorIncomingVoice(tickets) {
   const incoming = (tickets || []).filter((ticket) => isCentralIncomingVoice(ticket) || isResolverVoiceWaiting(ticket));
+  const centralIncoming = incoming.find(isCentralIncomingVoice);
+  if (centralIncoming) {
+    prepareOperatorIncomingVoice(centralIncoming);
+  } else if (currentOperatorVoice.direction === "incoming" &&
+             currentOperatorVoice.state === "RINGING" &&
+             !currentOperatorVoice.call) {
+    void cleanupOperatorVoice({
+      state: "ENDED",
+      message: "La llamada ya no está disponible.",
+      notifyBackend: false
+    });
+  }
   const newOnes = incoming.filter((ticket) => {
     const key = operatorVoiceSessionKey(ticket);
     return key && !knownOperatorVoiceSessionIds.has(String(key));
@@ -2815,7 +2995,6 @@ function notifyOperatorIncomingVoice(tickets) {
   if (!newOnes.length) return;
 
   const centralFirst = newOnes.find(isCentralIncomingVoice);
-  if (centralFirst) playOperatorRing();
   showOperatorIncomingVoiceAlert(centralFirst || newOnes[0]);
 }
 
@@ -3638,28 +3817,210 @@ async function ensureMapJsSIPLoaded() {
 
 function operatorVoiceStatus(message) {
   const el = document.getElementById("operatorVoiceStatus");
-  if (el) el.textContent = message || "Llamada segura lista";
+  if (el) el.textContent = message || "";
+  const overlayMessage = document.getElementById("operatorCallMessage");
+  if (overlayMessage && message) overlayMessage.textContent = message;
+}
+
+function operatorVoiceSessionId(session = currentOperatorVoice.session) {
+  return session?.id || session?.wa_center_session_id || currentOperatorVoice.sessionId || null;
+}
+
+function clearOperatorVoiceTimers() {
+  clearInterval(currentOperatorVoice.statusPollTimer);
+  clearTimeout(currentOperatorVoice.noAnswerTimer);
+  clearInterval(currentOperatorVoice.durationTimer);
+  currentOperatorVoice.statusPollTimer = null;
+  currentOperatorVoice.noAnswerTimer = null;
+  currentOperatorVoice.durationTimer = null;
+}
+
+function updateOperatorVoiceTimer() {
+  if (!currentOperatorVoice.connectedAt) return;
+  const elapsed = Math.max(0, Math.floor((Date.now() - currentOperatorVoice.connectedAt) / 1000));
+  const minutes = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const seconds = String(elapsed % 60).padStart(2, "0");
+  const timer = document.getElementById("operatorCallTimer");
+  if (timer) timer.textContent = `${minutes}:${seconds}`;
+}
+
+function markOperatorVoiceConnected() {
+  if (currentOperatorVoice.state === "CONNECTED") return;
+  stopOperatorRing();
+  clearTimeout(currentOperatorVoice.noAnswerTimer);
+  currentOperatorVoice.noAnswerTimer = null;
+  currentOperatorVoice.connectedAt = currentOperatorVoice.connectedAt || Date.now();
+  setOperatorVoiceState("CONNECTED", {
+    title: "Llamada conectada",
+    message: "Ya puedes conversar con el vecino."
+  });
+  updateOperatorVoiceTimer();
+  currentOperatorVoice.durationTimer = setInterval(updateOperatorVoiceTimer, 1000);
+}
+
+function stopOperatorMedia() {
+  const connection = currentOperatorVoice.peerConnection || currentOperatorVoice.call?.connection;
+  try {
+    connection?.getSenders?.().forEach((sender) => sender.track?.stop());
+    connection?.getReceivers?.().forEach((receiver) => receiver.track?.stop());
+  } catch {}
+  try {
+    if (connection && connection.signalingState !== "closed") connection.close();
+  } catch {}
+  currentOperatorVoice.peerConnection = null;
+  const audio = document.getElementById("operatorRemoteAudio");
+  try { audio?.srcObject?.getTracks?.().forEach((track) => track.stop()); } catch {}
+  try { audio?.pause?.(); } catch {}
+  if (audio) audio.srcObject = null;
+}
+
+async function notifyOperatorVoiceEnded(reason = "HANGUP") {
+  const sessionId = operatorVoiceSessionId();
+  if (!currentOperatorVoice.ticketId || !sessionId || currentOperatorVoice.backendFinalized) return;
+  currentOperatorVoice.backendFinalized = true;
+  const res = await fetch(
+    `${TICKET_URL}/${currentOperatorVoice.ticketId}/voice/sessions/${encodeURIComponent(sessionId)}/end`,
+    {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify({ reason })
+    }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.status === "error") throw new Error(data.message || "No fue posible finalizar la llamada");
+}
+
+async function cleanupOperatorVoice(options = {}) {
+  if (currentOperatorVoice.cleanupPromise) return currentOperatorVoice.cleanupPromise;
+  const {
+    state = "ENDED",
+    message = "Llamada finalizada",
+    notifyBackend = true,
+    reason = "HANGUP"
+  } = options;
+  currentOperatorVoice.cleanupPromise = Promise.resolve();
+  const cleanupTask = (async () => {
+    stopOperatorRing();
+    clearOperatorVoiceTimers();
+    stopOperatorMedia();
+    try { currentOperatorVoice.call?.terminate?.(); } catch {}
+    try { currentOperatorVoice.ua?.stop?.(); } catch {}
+    currentOperatorVoice.call = null;
+    currentOperatorVoice.ua = null;
+    if (notifyBackend) {
+      try { await notifyOperatorVoiceEnded(reason); }
+      catch (error) { console.warn("La sesión terminó localmente, pero el backend no confirmó el cierre", error); }
+    }
+    setOperatorVoiceState(state, {
+      title: message,
+      message: state === "NO_ANSWER"
+        ? "El vecino no contestó. El caso continúa activo."
+        : "El caso continúa disponible para la central."
+    });
+    setTimeout(() => {
+      if (currentOperatorVoice.state === state) {
+        ensureOperatorCallOverlay().classList.add("hidden");
+        currentOperatorVoice.state = "IDLE";
+      }
+    }, 1800);
+  })();
+  currentOperatorVoice.cleanupPromise = cleanupTask;
+  return cleanupTask;
 }
 
 function stopOperatorVoice() {
-  try { if (currentOperatorVoice.call) currentOperatorVoice.call.terminate(); } catch {}
-  try { if (currentOperatorVoice.ua) currentOperatorVoice.ua.stop(); } catch {}
-  currentOperatorVoice.ua = null;
-  currentOperatorVoice.call = null;
-  operatorVoiceStatus("Llamada segura finalizada.");
+  return cleanupOperatorVoice({ state: "ENDED", message: "Llamada finalizada", reason: "HANGUP" });
 }
 
-async function connectOperatorVoice(voiceSession) {
+async function reportOperatorVoiceConnected() {
+  const sessionId = operatorVoiceSessionId();
+  if (!currentOperatorVoice.ticketId || !sessionId || currentOperatorVoice.connectedReported) return;
+  currentOperatorVoice.connectedReported = true;
+  try {
+    const res = await fetch(
+      `${TICKET_URL}/${currentOperatorVoice.ticketId}/voice/sessions/${encodeURIComponent(sessionId)}/connected`,
+      { method: "POST", headers: jsonHeaders(), body: JSON.stringify({}) }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.status === "error") throw new Error(data.message || "No fue posible confirmar la conexión");
+    if (String(data.voice_session?.status || "").toUpperCase() === "CONNECTED") {
+      markOperatorVoiceConnected();
+    }
+  } catch (error) {
+    currentOperatorVoice.connectedReported = false;
+    console.warn("No se pudo confirmar la entrada de Central al canal", error);
+  }
+}
+
+async function pollOperatorVoiceStatus() {
+  const sessionId = operatorVoiceSessionId();
+  if (!currentOperatorVoice.ticketId || !sessionId || OPERATOR_VOICE_TERMINAL.has(currentOperatorVoice.state)) return;
+  try {
+    const res = await fetch(
+      `${TICKET_URL}/${currentOperatorVoice.ticketId}/voice/sessions/${encodeURIComponent(sessionId)}/status`,
+      { headers: jsonHeaders() }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.status === "error") return;
+    const status = String(data.voice_session?.status || "").toUpperCase();
+    if (status === "CONNECTED") {
+      markOperatorVoiceConnected();
+    } else if (["ENDED", "FAILED", "NO_ANSWER", "REJECTED", "EXPIRED"].includes(status)) {
+      await cleanupOperatorVoice({
+        state: status === "EXPIRED" ? "NO_ANSWER" : status,
+        message: status === "REJECTED"
+          ? "Llamada rechazada"
+          : status === "NO_ANSWER" || status === "EXPIRED"
+            ? "Sin respuesta"
+            : status === "FAILED"
+              ? "No fue posible conectar"
+              : "Llamada finalizada",
+        notifyBackend: false,
+        reason: `REMOTE_${status}`
+      });
+    }
+  } catch (error) {
+    console.warn("No fue posible consultar el estado de llamada", error);
+  }
+}
+
+function startOperatorVoiceTimers() {
+  clearOperatorVoiceTimers();
+  currentOperatorVoice.statusPollTimer = setInterval(pollOperatorVoiceStatus, 1500);
+  currentOperatorVoice.noAnswerTimer = setTimeout(() => {
+    if (currentOperatorVoice.state !== "CONNECTED" && !OPERATOR_VOICE_TERMINAL.has(currentOperatorVoice.state)) {
+      void cleanupOperatorVoice({
+        state: "NO_ANSWER",
+        message: "Sin respuesta",
+        notifyBackend: true,
+        reason: "NO_ANSWER"
+      });
+    }
+  }, 45000);
+}
+
+async function connectOperatorVoice(voiceSession, options = {}) {
   const webrtc = voiceSession?.webrtc || voiceSession?.party_b_webrtc || null;
-  if (!webrtc) throw new Error("No hay credenciales WebRTC para central");
+  if (!webrtc) throw new Error("No fue posible preparar el audio de la llamada");
   await ensureMapJsSIPLoaded();
 
   const sipDomain = webrtc.sip_domain || "wa-center.vsti.cl";
   const wssUrl = webrtc.wss_url || "wss://wa-center.vsti.cl/ws";
   const destination = webrtc.destination;
-  if (!webrtc.username || !destination) throw new Error("Credenciales WebRTC incompletas");
+  if (!webrtc.username || !destination || (!webrtc.ha1 && !webrtc.password)) {
+    throw new Error("No fue posible preparar el audio de la llamada");
+  }
 
-  operatorVoiceStatus("Entrando a llamada segura...");
+  currentOperatorVoice.session = voiceSession;
+  currentOperatorVoice.sessionId = operatorVoiceSessionId(voiceSession);
+  currentOperatorVoice.direction = options.direction || currentOperatorVoice.direction || "outgoing";
+  currentOperatorVoice.connectedReported = false;
+  currentOperatorVoice.cleanupPromise = null;
+  currentOperatorVoice.backendFinalized = false;
+  setOperatorVoiceState("CONNECTING", {
+    title: "Conectando llamada…",
+    message: "Preparando el canal de audio."
+  });
   const socket = new JsSIP.WebSocketInterface(wssUrl);
   const config = {
     sockets: [socket],
@@ -3674,43 +4035,75 @@ async function connectOperatorVoice(voiceSession) {
 
   const ua = new JsSIP.UA(config);
   currentOperatorVoice.ua = ua;
-  currentOperatorVoice.session = voiceSession;
 
-  ua.on("connected", () => operatorVoiceStatus("Audio seguro conectado. Registrando llamada..."));
-  ua.on("disconnected", () => operatorVoiceStatus("Audio desconectado."));
+  ua.on("connected", () => operatorVoiceStatus("Preparando audio…"));
+  ua.on("disconnected", () => {
+    if (!OPERATOR_VOICE_TERMINAL.has(currentOperatorVoice.state)) {
+      void cleanupOperatorVoice({
+        state: "FAILED",
+        message: "La llamada se desconectó",
+        reason: "WEBRTC_DISCONNECTED"
+      });
+    }
+  });
   ua.on("registrationFailed", (e) => {
     console.error("WA-Center operator registration failed", e);
-    operatorVoiceStatus(`Registro fallido (${e.cause || "sin detalle"})`);
+    void cleanupOperatorVoice({
+      state: "FAILED",
+      message: "No fue posible conectar",
+      reason: "REGISTRATION_FAILED"
+    });
   });
   ua.on("registered", () => {
-    operatorVoiceStatus("Entrando al canal de voz seguro...");
+    setOperatorVoiceState("RINGING", {
+      title: currentOperatorVoice.direction === "incoming" ? "Conectando llamada…" : "Llamando al vecino…",
+      message: currentOperatorVoice.direction === "incoming"
+        ? "Estableciendo la comunicación."
+        : "Esperando que el vecino conteste."
+    });
     const target = `sip:${destination}@${sipDomain}`;
     const call = ua.call(target, {
       mediaConstraints: { audio: true, video: false },
       pcConfig: { iceServers: voiceSession?.ice_servers || [] },
       eventHandlers: {
-        progress: () => operatorVoiceStatus("Llamando... esperando conexión del vecino."),
-        confirmed: () => operatorVoiceStatus("✅ En llamada segura."),
-        ended: () => stopOperatorVoice(),
+        progress: () => operatorVoiceStatus("Esperando respuesta…"),
+        confirmed: () => {
+          setOperatorVoiceState("CONNECTING", {
+            title: "Conectando llamada…",
+            message: "Confirmando la comunicación con el vecino."
+          });
+          void reportOperatorVoiceConnected();
+        },
+        ended: () => {
+          void cleanupOperatorVoice({
+            state: "ENDED",
+            message: "Llamada finalizada",
+            reason: "REMOTE_ENDED"
+          });
+        },
         failed: (e) => {
           console.error("WA-Center operator call failed", e);
-          operatorVoiceStatus(`Llamada fallida (${e.cause || "sin detalle"})`);
+          void cleanupOperatorVoice({
+            state: "FAILED",
+            message: "No fue posible conectar",
+            reason: String(e?.cause || "WEBRTC_FAILED").toUpperCase()
+          });
         }
       }
     });
     currentOperatorVoice.call = call;
-    call.connection.addEventListener("track", (event) => {
-      let audio = document.getElementById("operatorRemoteAudio");
-      if (!audio) {
-        audio = document.createElement("audio");
-        audio.id = "operatorRemoteAudio";
-        audio.autoplay = true;
-        audio.playsInline = true;
-        document.body.appendChild(audio);
-      }
-      audio.srcObject = event.streams[0];
-    });
+    const attachConnection = (connection) => {
+      if (!connection) return;
+      currentOperatorVoice.peerConnection = connection;
+      connection.addEventListener("track", (event) => {
+        const audio = document.getElementById("operatorRemoteAudio");
+        if (audio) audio.srcObject = event.streams[0];
+      });
+    };
+    attachConnection(call.connection);
+    call.on?.("peerconnection", (event) => attachConnection(event?.peerconnection));
   });
+  startOperatorVoiceTimers();
   ua.start();
 }
 
@@ -3732,18 +4125,82 @@ async function joinOperatorVoiceSession(sessionId = "latest") {
   }
 
   try {
-    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/voice/sessions/${sessionId}/join`, {
+    const ticket = selectedTicket;
+    const activeSession = activeVoiceSessionForTicket(ticket);
+    currentOperatorVoice.ticketId = ticket.id;
+    currentOperatorVoice.ticket = ticket;
+    currentOperatorVoice.sessionId = sessionId === "latest"
+      ? (activeSession?.id || activeSession?.wa_center_session_id || "latest")
+      : sessionId;
+    currentOperatorVoice.direction = "incoming";
+    stopOperatorRing();
+    setOperatorVoiceState("CONNECTING", {
+      title: "Conectando llamada…",
+      message: "Atendiendo al vecino."
+    });
+    const res = await fetch(`${TICKET_URL}/${ticket.id}/voice/sessions/${sessionId}/join`, {
       method: "POST",
       headers: jsonHeaders(),
       body: JSON.stringify({})
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.status === "error") throw new Error(data.message || "Error HTTP " + res.status);
-    await connectOperatorVoice(data.voice_session);
+    await connectOperatorVoice(data.voice_session, { direction: "incoming" });
   } catch (error) {
     console.error(error);
-    alert(error.message || "No fue posible atender la llamada segura");
+    await cleanupOperatorVoice({
+      state: "FAILED",
+      message: "No fue posible atender",
+      reason: "ANSWER_FAILED"
+    });
   }
+}
+
+function answerOperatorVoice() {
+  const sessionId = currentOperatorVoice.sessionId || operatorVoiceSessionId();
+  const ticket = currentOperatorVoice.ticket ||
+    currentTickets.find((item) => String(item.id) === String(currentOperatorVoice.ticketId));
+  if (ticket) selectedTicket = ticket;
+  return joinOperatorVoiceSession(sessionId || "latest");
+}
+
+async function rejectOperatorVoice() {
+  const sessionId = operatorVoiceSessionId();
+  if (!currentOperatorVoice.ticketId || !sessionId) return;
+  stopOperatorRing();
+  try {
+    const res = await fetch(
+      `${TICKET_URL}/${currentOperatorVoice.ticketId}/voice/sessions/${encodeURIComponent(sessionId)}/reject`,
+      {
+        method: "POST",
+        headers: jsonHeaders(),
+        body: JSON.stringify({ reason: "REJECTED_BY_OPERATOR" })
+      }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.status === "error") throw new Error(data.message || "No fue posible rechazar");
+    currentOperatorVoice.backendFinalized = true;
+    await cleanupOperatorVoice({
+      state: "REJECTED",
+      message: "Llamada rechazada",
+      notifyBackend: false
+    });
+  } catch (error) {
+    console.error(error);
+    operatorVoiceStatus("No fue posible rechazar la llamada.");
+  }
+}
+
+function toggleOperatorVoiceMute() {
+  const connection = currentOperatorVoice.peerConnection || currentOperatorVoice.call?.connection;
+  const tracks = (connection?.getSenders?.() || [])
+    .map((sender) => sender.track)
+    .filter((track) => track?.kind === "audio");
+  if (!tracks.length) return;
+  currentOperatorVoice.muted = !currentOperatorVoice.muted;
+  tracks.forEach((track) => { track.enabled = !currentOperatorVoice.muted; });
+  const button = document.getElementById("operatorMuteButton");
+  if (button) button.textContent = currentOperatorVoice.muted ? "🎙️ Activar" : "🎙️ Silenciar";
 }
 
 async function registerOperatorCall(mode = "voice") {
@@ -3753,11 +4210,21 @@ async function registerOperatorCall(mode = "voice") {
   }
 
   try {
-    const res = await fetch(`${TICKET_URL}/${selectedTicket.id}/voice/request`, {
+    const ticket = selectedTicket;
+    currentOperatorVoice = createOperatorVoiceState();
+    currentOperatorVoice.ticketId = ticket.id;
+    currentOperatorVoice.ticket = ticket;
+    currentOperatorVoice.direction = "outgoing";
+    setOperatorVoiceState("REQUESTING", {
+      title: "Llamando al vecino…",
+      message: "Preparando la llamada."
+    });
+    startOperatorRing();
+    const res = await fetch(`${TICKET_URL}/${ticket.id}/voice/request`, {
       method: "POST",
       headers: jsonHeaders(),
       body: JSON.stringify({
-        target_type: "CENTRAL",
+        target_type: "NEIGHBOR",
         mode
       })
     });
@@ -3765,11 +4232,17 @@ async function registerOperatorCall(mode = "voice") {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.status === "error") throw new Error(data.message || "Error HTTP " + res.status);
 
-    await openTicketPanel(selectedTicket.id);
-    await connectOperatorVoice(data.voice_session);
+    currentOperatorVoice.session = data.voice_session;
+    currentOperatorVoice.sessionId = operatorVoiceSessionId(data.voice_session);
+    await connectOperatorVoice(data.voice_session, { direction: "outgoing" });
   } catch (error) {
     console.error(error);
-    alert(error.message || "No se pudo iniciar llamada segura");
+    await cleanupOperatorVoice({
+      state: "FAILED",
+      message: "No fue posible conectar",
+      reason: "REQUEST_FAILED",
+      notifyBackend: Boolean(operatorVoiceSessionId())
+    });
   }
 }
 
@@ -3820,9 +4293,9 @@ function renderCommunications(actions) {
     if (String(action.action_type || "").startsWith("VOICE_")) {
       return `
         <div class="comm-card">
-          <strong>📞 Evento WA-Center</strong><br>
-          ${action.description || "Actualización técnica de llamada segura"}
-          <div class="comm-meta">${meta.wa_center_session_id || "WA-Center"} · ${date}</div>
+          <strong>📞 Llamada</strong><br>
+          ${action.description || "Actualización de la llamada"}
+          <div class="comm-meta">${date}</div>
         </div>
       `;
     }
@@ -4148,9 +4621,9 @@ const resolverVoiceWaiting = secureVoiceEnabled && isResolverVoiceWaiting(ticket
 const activeVoice = activeVoiceSessionForTicket(ticket);
 const activeVoiceId = activeVoice?.id || activeVoice?.wa_center_session_id || "latest";
 const voiceBannerHtml = centralIncomingVoice
-  ? `<div class="operator-incoming-voice-banner">📞 Llamada entrante del vecino<span>El vecino espera que la central atienda esta llamada segura.</span></div>`
+  ? `<div class="operator-incoming-voice-banner">📞 Llamada entrante del vecino<span>El vecino está llamando a la central.</span></div>`
   : resolverVoiceWaiting
-    ? `<div class="operator-incoming-voice-banner" style="background:#eff6ff;border-color:#93c5fd;color:#1e3a8a;animation:none;">📞 Vecino pidió hablar con el resolutor<span>Esperando que ${escapeHtml(ticket.resolver_name || "el resolutor asignado")} atienda desde la App Resolutor.</span></div>`
+    ? `<div class="operator-incoming-voice-banner" style="background:#eff6ff;border-color:#93c5fd;color:#1e3a8a;animation:none;">📞 Llamada dirigida al resolutor<span>${escapeHtml(ticket.resolver_name || "El resolutor asignado")} recibió el aviso en su aplicación.</span></div>`
     : "";
 const centralVoiceActionsHtml = !secureVoiceEnabled
   ? `<button class="btn-secondary" disabled style="background:#9ca3af;cursor:not-allowed;">📞 Llamadas deshabilitadas</button>`
@@ -4177,19 +4650,7 @@ ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 ${voiceBannerHtml}
 ${centralVoiceActionsHtml}
-
-${secureVoiceEnabled ? `
-<div class="voice-call-panel">
-  <strong>WA-Center WebRTC</strong>
-  <div id="operatorVoiceStatus">Listo. Si llamas desde central o atiendes una llamada entrante, el estado cambiará a “En llamada segura”.</div>
-  <div class="voice-call-actions">
-    <button class="btn-secondary" onclick="stopOperatorVoice()">Colgar llamada central</button>
-  </div>
-</div>
-
-<div class="operator-voice-note">
-  Si el vecino pidió hablar con el resolutor, la llamada debe atenderla el resolutor desde su app. La central solo atiende llamadas dirigidas a central.
-</div>` : `<div class="operator-voice-note">Las llamadas seguras están deshabilitadas por política del centro de control.</div>`}`;
+${!secureVoiceEnabled ? `<div class="operator-voice-note">Las llamadas están deshabilitadas para este centro de control.</div>` : ""}`;
 
 
 const panelVisual = isPhysicalDevice
