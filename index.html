@@ -2963,6 +2963,7 @@ function setOperatorVoiceState(state, options = {}) {
   const incoming = currentOperatorVoice.direction === "incoming" && state === "RINGING";
   const connected = state === "CONNECTED";
   const terminal = OPERATOR_VOICE_TERMINAL.has(state);
+  const canHangup = !incoming && !terminal && state !== "IDLE";
   const title = document.getElementById("operatorCallTitle");
   const message = document.getElementById("operatorCallMessage");
   const caseLabel = document.getElementById("operatorCallCase");
@@ -2975,7 +2976,7 @@ function setOperatorVoiceState(state, options = {}) {
   document.getElementById("operatorRejectButton").hidden = !incoming;
   document.getElementById("operatorAnswerButton").hidden = !incoming;
   document.getElementById("operatorMuteButton").hidden = !connected;
-  document.getElementById("operatorHangupButton").hidden = terminal;
+  document.getElementById("operatorHangupButton").hidden = !canHangup;
   timer.hidden = !connected;
   operatorVoiceStatus(options.message || "");
 }
