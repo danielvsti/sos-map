@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="app-version" content="v7-central-call-lifecycle" />
+<meta name="app-version" content="v8-central-operator-call-flow" />
 <title>VSTI SOS - Mapa</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
@@ -935,6 +935,56 @@ width: 100%;
 .voice-call-panel strong { display:block; margin-bottom:4px; }
 .voice-call-panel .voice-call-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
 .voice-call-panel button { font-size:13px; padding:7px 10px; border-radius:10px; }
+
+.operator-voice-control-card {
+  width: 100%;
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 2px solid #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff, #ffffff);
+  color: #0f172a;
+  box-shadow: 0 10px 28px rgba(37, 99, 235, .12);
+}
+.operator-voice-control-card.incoming {
+  border-color: #fecaca;
+  background: linear-gradient(180deg, #fff1f2, #ffffff);
+  box-shadow: 0 10px 30px rgba(220, 38, 38, .12);
+}
+.operator-voice-control-card.resolver {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff, #ffffff);
+  box-shadow: none;
+}
+.operator-voice-control-card strong {
+  display: block;
+  font-size: 19px;
+  margin-bottom: 6px;
+}
+.operator-voice-control-card p {
+  margin: 0 0 12px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.operator-voice-primary-button {
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  padding: 15px 18px;
+  font-size: 18px;
+  font-weight: 950;
+  cursor: pointer;
+  color: white;
+  background: #16a34a;
+}
+.operator-voice-primary-button.call {
+  background: #2563eb;
+}
+.operator-voice-primary-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
 
 .operator-call-overlay {
   position: fixed;
@@ -2808,9 +2858,16 @@ function activeVoiceSessionForTicket(ticket) {
 
 function isCentralIncomingVoice(ticket) {
   const session = activeVoiceSessionForTicket(ticket);
+  const targetType = String(session?.target_type || "").toUpperCase();
+  const requestedBy = String(session?.requested_by || "").toUpperCase();
+  const resolverRejected = String(ticket?.latest_assignment_state || "").toUpperCase() === "REJECTED";
+  const hasResolverAssigned = !resolverRejected && Boolean(ticket?.assigned_resolver_id || ticket?.resolver_id || ticket?.resolver_name);
   return !!session
-    && String(session.target_type || "").toUpperCase() === "CENTRAL"
-    && String(session.requested_by || "").toUpperCase() === "NEIGHBOR";
+    && requestedBy === "NEIGHBOR"
+    && (
+      targetType === "CENTRAL" ||
+      (!hasResolverAssigned && targetType !== "RESOLVER")
+    );
 }
 
 function isResolverVoiceWaiting(ticket) {
@@ -3556,15 +3613,12 @@ function renderResolver(resolver) {
 
   const popup = `
     <strong>👮 ${resolver.full_name}</strong><br>
-    Estado operativo: <strong>${resolverStateLabel(displayState)}</strong><br>
-    Estado técnico: ${resolver.raw_status || resolver.status || "-"}<br>
+    Estado: <strong>${resolverStateLabel(displayState)}</strong><br>
     GPS: ${gpsState}<br>
     Frescura: ${freshness}<br>
     Precisión: ${accuracyText}<br>
     Máx. permitido: ${maxAccuracyText}<br>
     Casos activos: ${resolver.active_tickets_count ?? 0}<br>
-    Latitud real: ${resolver.latitude}<br>
-    Longitud real: ${resolver.longitude}<br>
     Teléfono: ${resolver.phone ?? "-"}<br>
     Última actualización: ${updatedText}<br>
     ${resolver._overlapCount > 1 ? `<small>Marcador desplazado visualmente (${resolver._overlapIndex}/${resolver._overlapCount}) para evitar traslape. La coordenada real se mantiene arriba.</small><br>` : ""}
@@ -4047,7 +4101,7 @@ async function connectOperatorVoice(voiceSession, options = {}) {
     }
   });
   ua.on("registrationFailed", (e) => {
-    console.error("WA-Center operator registration failed", e);
+    console.error("Operator call registration failed", e);
     void cleanupOperatorVoice({
       state: "FAILED",
       message: "No fue posible conectar",
@@ -4082,7 +4136,7 @@ async function connectOperatorVoice(voiceSession, options = {}) {
           });
         },
         failed: (e) => {
-          console.error("WA-Center operator call failed", e);
+          console.error("Operator call failed", e);
           void cleanupOperatorVoice({
             state: "FAILED",
             message: "No fue posible conectar",
@@ -4621,15 +4675,43 @@ const resolverVoiceWaiting = secureVoiceEnabled && isResolverVoiceWaiting(ticket
 const activeVoice = activeVoiceSessionForTicket(ticket);
 const activeVoiceId = activeVoice?.id || activeVoice?.wa_center_session_id || "latest";
 const voiceBannerHtml = centralIncomingVoice
-  ? `<div class="operator-incoming-voice-banner">📞 Llamada entrante del vecino<span>El vecino está llamando a la central.</span></div>`
+  ? `<div class="operator-incoming-voice-banner">📞 Llamada entrante del vecino<span>El vecino está esperando que la central conteste.</span></div>`
   : resolverVoiceWaiting
     ? `<div class="operator-incoming-voice-banner" style="background:#eff6ff;border-color:#93c5fd;color:#1e3a8a;animation:none;">📞 Llamada dirigida al resolutor<span>${escapeHtml(ticket.resolver_name || "El resolutor asignado")} recibió el aviso en su aplicación.</span></div>`
     : "";
 const centralVoiceActionsHtml = !secureVoiceEnabled
-  ? `<button class="btn-secondary" disabled style="background:#9ca3af;cursor:not-allowed;">📞 Llamadas deshabilitadas</button>`
-  : (centralIncomingVoice
-    ? `<button class="btn-secondary" onclick="joinOperatorVoiceSession('${escapeHtml(activeVoiceId)}')">☎️ Atender llamada del vecino</button>`
-    : `<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Llamar vecino desde central</button>`);
+  ? `
+    <div class="operator-voice-control-card">
+      <strong>📞 Comunicación con vecino</strong>
+      <p>Las llamadas están deshabilitadas para este centro de control.</p>
+      <button class="operator-voice-primary-button" disabled>Servicio no disponible</button>
+    </div>`
+  : centralIncomingVoice
+    ? `
+      <div class="operator-voice-control-card incoming">
+        <strong>☎️ Llamada entrante del vecino</strong>
+        <p>El vecino está esperando que la central atienda esta llamada.</p>
+        <button class="operator-voice-primary-button" onclick="joinOperatorVoiceSession('${escapeHtml(activeVoiceId)}')">Contestar llamada</button>
+      </div>`
+    : resolverVoiceWaiting
+      ? `
+        <div class="operator-voice-control-card resolver">
+          <strong>📞 Llamada para el resolutor</strong>
+          <p>${escapeHtml(ticket.resolver_name || "El resolutor asignado")} recibió el aviso. La central puede seguir gestionando el caso desde el mapa.</p>
+        </div>`
+      : activeVoice
+        ? `
+          <div class="operator-voice-control-card">
+            <strong>📞 Llamada en curso</strong>
+            <p>Este caso ya tiene una comunicación activa. Espera a que termine antes de iniciar otra.</p>
+            <button class="operator-voice-primary-button" disabled>Comunicación activa</button>
+          </div>`
+        : `
+          <div class="operator-voice-control-card">
+            <strong>📞 Comunicación con vecino</strong>
+            <p>Inicia una llamada segura hacia el vecino desde la central.</p>
+            <button class="operator-voice-primary-button call" onclick="registerOperatorCall('voice')">Llamar al vecino</button>
+          </div>`;
 
 const resolverActionsHtml = isPhysicalDevice
   ? `
@@ -4650,7 +4732,7 @@ ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 ${voiceBannerHtml}
 ${centralVoiceActionsHtml}
-${!secureVoiceEnabled ? `<div class="operator-voice-note">Las llamadas están deshabilitadas para este centro de control.</div>` : ""}`;
+`;
 
 
 const panelVisual = isPhysicalDevice
