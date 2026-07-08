@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="app-version" content="v9-operator-live-panel" />
+<meta name="app-version" content="v10-responsive-operator-header" />
 <title>VSTI SOS - Mapa</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
@@ -2290,6 +2290,264 @@ html, body {
 }
 /* --- END SOS MAP HEADER RESPONSIVE RESET V3 --- */
 
+/* --- SOS MAP v10 — header responsivo sin cortes --- */
+.map-header-more-button {
+  display: none;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(148, 163, 184, .55);
+  border-radius: 18px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.panel.map-command-header {
+  grid-template-columns:
+    minmax(420px, 1.2fr)
+    minmax(280px, .75fr)
+    minmax(460px, 1.15fr)
+    max-content !important;
+  grid-template-areas: "brand session metrics actions";
+  align-items: center !important;
+  overflow: visible !important;
+}
+
+.map-brand-block { grid-area: brand; }
+.operator-pill { grid-area: session; }
+.map-metrics-strip { grid-area: metrics; }
+.map-header-actions { grid-area: actions; }
+
+.map-brand-copy,
+.map-brand-title,
+.map-brand-subtitle,
+.map-brand-kicker {
+  min-width: 0 !important;
+}
+
+.map-brand-title,
+.map-brand-subtitle {
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.map-brand-title {
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden !important;
+}
+
+.map-brand-subtitle,
+.map-brand-kicker {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+.operator-pill {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+.map-metrics-strip {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.map-metric {
+  flex: 0 0 auto !important;
+  min-width: 98px !important;
+  max-width: none !important;
+}
+
+.map-metric:has(#status) {
+  min-width: 150px !important;
+}
+
+.map-metric strong,
+.map-metric span {
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+@media (max-width: 1680px) {
+  .panel.map-command-header {
+    grid-template-columns:
+      minmax(350px, 1fr)
+      minmax(260px, .75fr)
+      minmax(360px, .9fr)
+      max-content !important;
+  }
+
+  .map-metric:has(#sirenCount),
+  .map-metric:has(#count) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1380px) {
+  .panel.map-command-header {
+    grid-template-columns: minmax(360px, 1fr) max-content !important;
+    grid-template-areas:
+      "brand actions"
+      "session session"
+      "metrics metrics";
+    row-gap: 12px !important;
+  }
+
+  .map-header-more-button {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .map-metrics-strip {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(120px, max-content)) !important;
+    justify-content: start !important;
+    width: 100% !important;
+  }
+
+  .map-metric:has(#sirenCount),
+  .map-metric:has(#count),
+  .map-metric:has(#mobileSosCount),
+  .map-metric:has(#recentSosCount),
+  .map-metric:has(#totalNodes),
+  .map-metric:has(#lastUpdate) {
+    display: none !important;
+  }
+
+  .operator-pill {
+    width: 100% !important;
+    justify-self: stretch !important;
+  }
+}
+
+@media (max-width: 1060px) {
+  .panel.map-command-header {
+    grid-template-columns: 1fr max-content !important;
+    grid-template-areas:
+      "brand actions"
+      "session session"
+      "metrics metrics";
+  }
+
+  .municipality-logo-shell {
+    width: 92px !important;
+    height: 54px !important;
+    flex-basis: 92px !important;
+  }
+
+  .municipality-logo {
+    max-width: 80px !important;
+    max-height: 42px !important;
+  }
+
+  .map-brand-kicker,
+  .map-brand-subtitle {
+    display: none !important;
+  }
+
+  .map-brand-title {
+    font-size: 20px !important;
+    line-height: 1.08 !important;
+  }
+
+  .map-header-actions {
+    display: grid !important;
+    grid-template-columns: auto auto auto;
+    gap: 8px !important;
+  }
+
+  #panelLogoutButton {
+    display: none !important;
+  }
+
+  .map-command-header.header-expanded #panelLogoutButton {
+    display: inline-flex !important;
+  }
+
+  .map-metrics-strip,
+  .operator-pill {
+    display: none !important;
+  }
+
+  .map-command-header.header-expanded .operator-pill {
+    display: inline-flex !important;
+  }
+
+  .map-command-header.header-expanded .map-metrics-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(132px, max-content)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  :root { --sos-map-header-x: 10px; --sos-map-header-top: 10px; }
+
+  .panel.map-command-header {
+    grid-template-columns: 1fr max-content !important;
+    padding: 10px !important;
+    border-radius: 20px !important;
+  }
+
+  .map-brand-block {
+    gap: 9px !important;
+  }
+
+  .municipality-logo-shell {
+    width: 74px !important;
+    height: 46px !important;
+    flex-basis: 74px !important;
+    border-radius: 14px !important;
+  }
+
+  .municipality-logo {
+    max-width: 66px !important;
+    max-height: 36px !important;
+  }
+
+  .map-brand-title {
+    font-size: 17px !important;
+    -webkit-line-clamp: 2;
+  }
+
+  .map-command-header .map-filter-button {
+    min-width: 0 !important;
+    width: 48px !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+  }
+
+  .map-command-header .map-filter-button::before {
+    content: "🧭";
+    font-size: 20px;
+  }
+
+  .map-header-more-button {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .map-command-header.header-expanded .map-metrics-strip {
+    grid-template-columns: 1fr !important;
+  }
+
+  .map-metric,
+  .map-metric:has(#status) {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+/* --- END SOS MAP v10 --- */
+
 </style>
 </head>
 
@@ -2338,6 +2596,7 @@ html, body {
   <div class="map-header-actions">
     <button id="mapFilterButton" class="map-filter-button" type="button">🧭 Filtros</button>
     <button id="panelLogoutButton" class="btn-logout" style="display:none">Cerrar sesión</button>
+    <button id="mapHeaderMoreButton" class="map-header-more-button" type="button" aria-expanded="false" aria-label="Ver más opciones">⋯</button>
   </div>
 
   <div class="product-signature" title="Producto / plataforma">
@@ -5239,6 +5498,13 @@ document.getElementById("panelLoginPhone").addEventListener("keydown", event => 
 if (event.key === "Enter") panelLogin();
 });
 document.getElementById("panelLogoutButton").addEventListener("click", logoutPanel);
+document.getElementById("mapHeaderMoreButton")?.addEventListener("click", () => {
+  const header = document.querySelector(".map-command-header");
+  const button = document.getElementById("mapHeaderMoreButton");
+  if (!header || !button) return;
+  const expanded = header.classList.toggle("header-expanded");
+  button.setAttribute("aria-expanded", expanded ? "true" : "false");
+});
 initMapFilters();
 checkPanelSession();
 </script>
