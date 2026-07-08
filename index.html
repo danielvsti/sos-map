@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="app-version" content="v8-central-operator-call-flow" />
+<meta name="app-version" content="v9-operator-live-panel" />
 <title>VSTI SOS - Mapa</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
@@ -2158,6 +2158,136 @@ html, body {
   #panelLogoutButton { height: 36px !important; min-width: 92px !important; padding: 0 10px !important; font-size: 12px !important; }
   .map-metrics-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
+/* --- SOS MAP v9 — header ejecutivo + panel vivo --- */
+:root {
+  --sos-map-controls-top: 118px;
+}
+
+.panel.map-command-header {
+  min-height: 82px !important;
+  padding: 14px 18px !important;
+  border-radius: 24px !important;
+  grid-template-columns: minmax(430px, 1.35fr) minmax(250px, .8fr) minmax(430px, 1fr) auto !important;
+  gap: 12px 16px !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.985), rgba(248,250,252,.96)) !important;
+  border: 1px solid rgba(203, 213, 225, .92) !important;
+  box-shadow: 0 18px 46px rgba(15,23,42,.17), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+.municipality-logo-shell {
+  width: 118px !important;
+  height: 62px !important;
+  flex-basis: 118px !important;
+  border-radius: 18px !important;
+}
+
+.map-brand-kicker {
+  color: #334155 !important;
+  font-size: 13px !important;
+}
+
+.map-brand-title {
+  max-width: 360px !important;
+  font-size: 21px !important;
+  letter-spacing: -.02em !important;
+}
+
+.map-brand-subtitle {
+  max-width: 360px !important;
+  color: #475569 !important;
+  font-size: 13px !important;
+}
+
+.operator-pill {
+  justify-self: stretch !important;
+  padding: 12px 16px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #e0f2fe, #f0f9ff) !important;
+  border-color: rgba(14, 165, 233, .35) !important;
+  color: #075985 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.82) !important;
+}
+
+.map-metrics-strip {
+  justify-content: flex-end !important;
+  gap: 9px !important;
+}
+
+.map-metric {
+  min-width: 86px !important;
+  max-width: 116px !important;
+  padding: 9px 11px !important;
+  border-radius: 17px !important;
+  background: rgba(255,255,255,.78) !important;
+  border: 1px solid rgba(203,213,225,.92) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.86) !important;
+}
+
+.map-metric span {
+  font-size: 10px !important;
+  color: #64748b !important;
+}
+
+.map-metric strong {
+  font-size: 18px !important;
+  letter-spacing: -.02em !important;
+}
+
+.map-metric:has(#lastUpdate) {
+  display: none !important;
+}
+
+#status.online::before {
+  content: "● ";
+  color: #22c55e;
+}
+
+#status.offline::before {
+  content: "● ";
+  color: #ef4444;
+}
+
+.map-header-actions {
+  gap: 10px !important;
+}
+
+.map-command-header .map-filter-button,
+#panelLogoutButton {
+  height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 18px !important;
+  font-size: 15px !important;
+}
+
+.map-command-header .map-filter-button {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: rgba(37, 99, 235, .50) !important;
+}
+
+#panelLogoutButton {
+  background: #f8fafc !important;
+  color: #334155 !important;
+}
+
+.ticket-panel-refreshing .ticket-header::after {
+  content: "Actualizando…";
+  margin-left: auto;
+  margin-right: 12px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+@media (max-width: 1380px) {
+  .panel.map-command-header {
+    grid-template-columns: minmax(340px, 1fr) minmax(220px, .8fr) minmax(330px, 1fr) auto !important;
+  }
+  .map-brand-title,
+  .map-brand-subtitle { max-width: 270px !important; }
+  .map-metric { min-width: 76px !important; }
+  .map-metric:has(#sirenCount) { display: none !important; }
+}
 /* --- END SOS MAP HEADER RESPONSIVE RESET V3 --- */
 
 </style>
@@ -2793,6 +2923,7 @@ const mobileMarkers = {};
 const mobileEventMarkers = {};
 const resolverMarkers = {};
 let selectedTicket = null;
+let ticketPanelRefreshInFlight = false;
 let selectedMobileEvent = null;
 let currentOperatorVoice = createOperatorVoiceState();
 let currentSirens = [];
@@ -3651,6 +3782,8 @@ if (event) {
 document
 	.getElementById("ticketPanel")
 	.classList.add("hidden");
+
+selectedTicket = null;
 }
 
 
@@ -4544,7 +4677,10 @@ async function manualAssignSelectedTicket(resolverUserId) {
 }
 
 
-async function openTicketPanel(ticketId) {
+async function openTicketPanel(ticketId, options = {}) {
+const { silent = false, preserveScroll = false } = options;
+const panelEl = document.getElementById("ticketPanel");
+const previousScrollTop = preserveScroll && panelEl ? panelEl.scrollTop : null;
 
 try {
 
@@ -4887,15 +5023,37 @@ ${resolverActionsHtml}
 	`;
 
 document
-	.getElementById("ticketPanel")
+		.getElementById("ticketPanel")
 	.classList.remove("hidden");
+
+if (previousScrollTop != null && panelEl) {
+  requestAnimationFrame(() => {
+    panelEl.scrollTop = Math.min(previousScrollTop, panelEl.scrollHeight);
+  });
+}
 
 } catch (error) {
 
 console.error(error);
 
-alert("No fue posible cargar el ticket");
+if (!silent) alert("No fue posible cargar el ticket");
 }
+}
+
+async function refreshSelectedTicketPanel() {
+  const panel = document.getElementById("ticketPanel");
+  if (!selectedTicket?.id || !panel || panel.classList.contains("hidden")) return;
+  if (ticketPanelRefreshInFlight) return;
+
+  ticketPanelRefreshInFlight = true;
+  panel.classList.add("ticket-panel-refreshing");
+  const ticketId = selectedTicket.id;
+  try {
+    await openTicketPanel(ticketId, { silent: true, preserveScroll: true });
+  } finally {
+    ticketPanelRefreshInFlight = false;
+    panel.classList.remove("ticket-panel-refreshing");
+  }
 }
 
 
@@ -5067,12 +5225,7 @@ delete mobileEventMarkers[key];
 }
 });
 
-
-
-
-
-
-
+await refreshSelectedTicketPanel();
 
 } catch (err) {
 console.error(err);
