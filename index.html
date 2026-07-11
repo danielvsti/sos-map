@@ -5367,6 +5367,9 @@ async function refreshSelectedTicketPanel() {
   const panel = document.getElementById("ticketPanel");
   if (!selectedTicket?.id || !panel || panel.classList.contains("hidden")) return;
   if (ticketPanelRefreshInFlight) return;
+  const mediaPlaying = Array.from(panel.querySelectorAll("[data-communication-media]"))
+    .some((media) => !media.paused && !media.ended);
+  if (mediaPlaying) return;
 
   ticketPanelRefreshInFlight = true;
   panel.classList.add("ticket-panel-refreshing");
