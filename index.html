@@ -4294,10 +4294,46 @@ function updateOperatorTools() {
     </a>`).join("") : '<div style="color:#64748b">No hay números configurados.</div>';
 }
 
+const DASHBOARD_ORIGIN = "https://sos-dashboard-3695.onrender.com";
+let dashboardWindow = null;
+
+function sendDashboardSession(targetWindow = dashboardWindow) {
+  const token = getPanelToken();
+  if (!targetWindow || targetWindow.closed || !token || !panelSessionUser) return false;
+  targetWindow.postMessage({
+    type: "SOS_DASHBOARD_SESSION",
+    token,
+    user: panelSessionUser,
+    control_center_code: currentControlCenterCode()
+  }, DASHBOARD_ORIGIN);
+  return true;
+}
+
+window.addEventListener("message", event => {
+  if (event.origin !== DASHBOARD_ORIGIN || event.data?.type !== "SOS_DASHBOARD_SESSION_REQUEST") return;
+  if (dashboardWindow && event.source !== dashboardWindow) return;
+  dashboardWindow = event.source;
+  sendDashboardSession(event.source);
+});
+
 function openDashboardShortcut() {
   const button = document.getElementById("dashboardShortcutButton");
   if (button.disabled) return;
-  window.open(`https://sos-dashboard-3695.onrender.com/?cc=${encodeURIComponent(currentControlCenterCode())}`, "_blank", "noopener");
+  if (dashboardWindow && !dashboardWindow.closed) {
+    dashboardWindow.focus();
+    sendDashboardSession();
+    return;
+  }
+
+  dashboardWindow = window.open(
+    `${DASHBOARD_ORIGIN}/?cc=${encodeURIComponent(currentControlCenterCode())}&source=map`,
+    "sosExecutiveDashboard"
+  );
+  if (!dashboardWindow) return alert("Habilita las ventanas emergentes para abrir el Dashboard Ejecutivo.");
+
+  // La pestaña destino también solicita la sesión al cargar; estos reintentos
+  // cubren el intervalo previo a que instale su listener de mensajes.
+  [150, 500, 1000].forEach(delay => setTimeout(() => sendDashboardSession(), delay));
 }
 
 
