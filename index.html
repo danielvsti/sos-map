@@ -3814,20 +3814,22 @@ function renderCommunications(actions) {
     }
 
     if (action.action_type === "MEDIA_AUDIO") {
+      const mediaUrl = escapeHtml(meta.media_url || "");
       return `
         <div class="comm-card">
           <strong>🎙️ Audio recibido</strong><br>
-          <audio controls src="${meta.media_url || ""}"></audio>
+          <audio controls playsinline preload="metadata" data-communication-media="${mediaUrl}" src="${mediaUrl}"></audio>
           <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
         </div>
       `;
     }
 
     if (action.action_type === "MEDIA_VIDEO") {
+      const mediaUrl = escapeHtml(meta.media_url || "");
       return `
         <div class="comm-card">
           <strong>📹 Video recibido</strong><br>
-          <video controls playsinline src="${meta.media_url || ""}"></video>
+          <video controls playsinline preload="metadata" data-communication-media="${mediaUrl}" src="${mediaUrl}"></video>
           <div class="comm-meta">${meta.sender_name || action.actor_role || "-"} · ${date}</div>
         </div>
       `;
@@ -3864,6 +3866,48 @@ function renderCommunications(actions) {
       </div>
     `;
   }).join("");
+}
+
+function captureCommunicationPlaybackState() {
+  const state = new Map();
+  document.querySelectorAll("#ticketContent [data-communication-media]").forEach((media) => {
+    const key = media.dataset.communicationMedia || media.currentSrc || media.src;
+    if (!key) return;
+    state.set(key, {
+      currentTime: Number.isFinite(media.currentTime) ? media.currentTime : 0,
+      wasPlaying: !media.paused && !media.ended,
+      volume: media.volume,
+      muted: media.muted,
+      playbackRate: media.playbackRate
+    });
+  });
+  return state;
+}
+
+function restoreCommunicationPlaybackState(state) {
+  if (!state?.size) return;
+  document.querySelectorAll("#ticketContent [data-communication-media]").forEach((media) => {
+    const key = media.dataset.communicationMedia || media.currentSrc || media.src;
+    const saved = state.get(key);
+    if (!saved) return;
+
+    const restore = () => {
+      try {
+        if (saved.currentTime > 0 && Number.isFinite(media.duration)) {
+          media.currentTime = Math.min(saved.currentTime, Math.max(0, media.duration - 0.05));
+        }
+        media.volume = saved.volume;
+        media.muted = saved.muted;
+        media.playbackRate = saved.playbackRate;
+        if (saved.wasPlaying) media.play().catch(() => null);
+      } catch (error) {
+        console.warn("No se pudo restaurar la reproducción", error);
+      }
+    };
+
+    if (media.readyState >= 1) restore();
+    else media.addEventListener("loadedmetadata", restore, { once: true });
+  });
 }
 
 async function autoAssignTicket(ticketId) {
@@ -4035,6 +4079,8 @@ async function manualAssignSelectedTicket(resolverUserId) {
 async function openTicketPanel(ticketId) {
 
 try {
+
+const communicationPlaybackState = captureCommunicationPlaybackState();
 
 const res = await fetch(
 		`${TICKET_URL}/${ticketId}`,
@@ -4357,6 +4403,8 @@ ${resolverActionsHtml}
 	${actionsHtml}
 </div>
 	`;
+
+restoreCommunicationPlaybackState(communicationPlaybackState);
 
 document
 	.getElementById("ticketPanel")
