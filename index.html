@@ -2158,6 +2158,12 @@ html, body {
   #panelLogoutButton { height: 36px !important; min-width: 92px !important; padding: 0 10px !important; font-size: 12px !important; }
   .map-metrics-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
+
+.operator-tool-button{height:40px;border:1px solid #cbd5e1;border-radius:12px;padding:0 12px;background:#fff;color:#0f172a;font-weight:800;cursor:pointer;white-space:nowrap}
+.operator-tool-button:disabled{opacity:.42;cursor:not-allowed;background:#e2e8f0}
+.emergency-directory{position:fixed;top:104px;right:22px;z-index:2100;width:min(360px,calc(100vw - 32px));padding:18px;border-radius:20px;background:#fff;border:1px solid #cbd5e1;box-shadow:0 24px 70px rgba(15,23,42,.24)}
+.emergency-directory.hidden{display:none}.emergency-directory-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.emergency-directory-head button{border:0;background:#e2e8f0;border-radius:10px;width:34px;height:34px;font-size:20px}.emergency-contact-list{display:grid;gap:9px}.emergency-contact-call{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;background:#f8fafc;border:1px solid #dbe4ef;color:#0f172a;text-decoration:none;font-weight:800}.emergency-contact-call span:last-child{color:#2563eb}
+.ticket-location-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:8px}.ticket-location-tools button{margin:0!important}
 /* --- SOS MAP v9 — header ejecutivo + panel vivo --- */
 :root {
   --sos-map-controls-top: 118px;
@@ -2596,6 +2602,8 @@ html, body {
   </div>
 
   <div class="map-header-actions">
+    <button id="emergencyDirectoryButton" class="operator-tool-button" type="button">☎️ Emergencias</button>
+    <button id="dashboardShortcutButton" class="operator-tool-button" type="button" disabled>📊 Dashboard</button>
     <button id="mapFilterButton" class="map-filter-button" type="button">🧭 Filtros</button>
     <button id="panelLogoutButton" class="btn-logout" style="display:none">Cerrar sesión</button>
     <button id="mapHeaderMoreButton" class="map-header-more-button" type="button" aria-expanded="false" aria-label="Ver más opciones">⋯</button>
@@ -2606,6 +2614,11 @@ html, body {
     <span>Plataforma SOS</span>
   </div>
 </div>
+
+<aside id="emergencyDirectory" class="emergency-directory hidden" aria-label="Directorio de emergencias">
+  <div class="emergency-directory-head"><div><strong>Directorio de emergencias</strong><div style="font-size:12px;color:#64748b">Contactos configurados para la municipalidad</div></div><button id="emergencyDirectoryClose" type="button">×</button></div>
+  <div id="emergencyContactList" class="emergency-contact-list"></div>
+</aside>
 
 <div id="map"></div>
 <div id="boundaryBadge" class="boundary-badge hidden">Límite operacional: <strong>sin cargar</strong></div>
@@ -4241,6 +4254,52 @@ function callDirectPhone(phone) {
   window.location.href = `tel:${clean}`;
 }
 
+function eventLocationUrl(ticket = selectedTicket) {
+  const lat = Number(ticket?.latitude);
+  const lng = Number(ticket?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  return `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+}
+
+async function copyEventLocation() {
+  const url = eventLocationUrl();
+  if (!url) return alert("El ticket no tiene coordenadas válidas");
+  const text = `${selectedTicket?.title || 'Emergencia'} · Ticket ${shortTicketId(selectedTicket?.id)}\n${url}`;
+  try { await navigator.clipboard.writeText(text); alert("Ubicación copiada"); }
+  catch { window.prompt("Copia la ubicación del evento", text); }
+}
+
+async function shareEventLocation() {
+  const url = eventLocationUrl();
+  if (!url) return alert("El ticket no tiene coordenadas válidas");
+  const payload = { title: selectedTicket?.title || "Ubicación de emergencia", text: `Ticket ${shortTicketId(selectedTicket?.id)}`, url };
+  if (navigator.share) {
+    try { await navigator.share(payload); return; } catch (error) { if (error?.name === "AbortError") return; }
+  }
+  await copyEventLocation();
+}
+
+function updateOperatorTools() {
+  const roles = currentPlatformSettings?.operator_tools?.dashboard_roles || ["OPERATOR", "ADMIN", "SUPER_ADMIN"];
+  const dashboardButton = document.getElementById("dashboardShortcutButton");
+  const allowed = roles.includes(String(panelSessionUser?.role || "").toUpperCase());
+  dashboardButton.disabled = !allowed;
+  dashboardButton.title = allowed ? "Abrir Dashboard Ejecutivo" : "Tu cuenta no está autorizada para ver el Dashboard";
+
+  const contacts = (currentPlatformSettings?.operator_tools?.emergency_contacts || []).filter(contact => contact.enabled !== false && contact.phone);
+  const list = document.getElementById("emergencyContactList");
+  list.innerHTML = contacts.length ? contacts.map(contact => `
+    <a class="emergency-contact-call" href="tel:${escapeHtml(cleanPhoneForTel(contact.phone))}">
+      <span>${escapeHtml(contact.icon || "☎️")} ${escapeHtml(contact.label || "Emergencia")}</span><span>${escapeHtml(contact.phone)}</span>
+    </a>`).join("") : '<div style="color:#64748b">No hay números configurados.</div>';
+}
+
+function openDashboardShortcut() {
+  const button = document.getElementById("dashboardShortcutButton");
+  if (button.disabled) return;
+  window.open(`https://sos-dashboard-3695.onrender.com/?cc=${encodeURIComponent(currentControlCenterCode())}`, "_blank", "noopener");
+}
+
 
 function loadMapScriptOnce(src) {
   return new Promise((resolve, reject) => {
@@ -5180,6 +5239,10 @@ ${physicalPhoneClean
   ? `<button onclick="callDirectPhone('${physicalPhoneClean}')">📞 Llamar directo</button>`
   : `<button disabled style="background:#9ca3af;cursor:not-allowed;">📞 Sin teléfono</button>`
 }
+<div class="ticket-location-tools">
+  <button class="btn-secondary" onclick="copyEventLocation()">📍 Copiar ubicación</button>
+  <button class="btn-secondary" onclick="shareEventLocation()">↗️ Compartir ubicación</button>
+</div>
 <div style="width:100%;font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35;">
   Caso generado por botón físico. No se envían solicitudes internas a PWA; usar protocolo definido por la central si hay teléfono asociado como respaldo.
 </div>
@@ -5190,6 +5253,10 @@ ${assignmentButtonHtml}
 ${needsAssignment ? `<button class="btn-secondary" onclick="autoAssignTicket('${ticket.id}')">🎯 Autoasignar disponible</button>` : ""}
 ${voiceBannerHtml}
 ${centralVoiceActionsHtml}
+<div class="ticket-location-tools">
+  <button class="btn-secondary" onclick="copyEventLocation()">📍 Copiar ubicación</button>
+  <button class="btn-secondary" onclick="shareEventLocation()">↗️ Compartir ubicación</button>
+</div>
 `;
 
 
@@ -5393,6 +5460,7 @@ fetch(publicMapStateUrl(), { headers: authHeaders() })
 const data = await dashboardRes.json();
 const publicData = await publicRes.json();
 currentPlatformSettings = publicData.platform_settings || currentPlatformSettings || null;
+updateOperatorTools();
 
 const controlCenter = data.control_center || null;
 applyControlCenterBranding(controlCenter);
@@ -5568,6 +5636,9 @@ document.getElementById("panelLoginCode").addEventListener("keydown", event => {
 if (event.key === "Enter") panelLogin();
 });
 document.getElementById("panelLogoutButton").addEventListener("click", logoutPanel);
+document.getElementById("dashboardShortcutButton").addEventListener("click", openDashboardShortcut);
+document.getElementById("emergencyDirectoryButton").addEventListener("click", () => document.getElementById("emergencyDirectory").classList.toggle("hidden"));
+document.getElementById("emergencyDirectoryClose").addEventListener("click", () => document.getElementById("emergencyDirectory").classList.add("hidden"));
 document.getElementById("mapHeaderMoreButton")?.addEventListener("click", () => {
   const header = document.querySelector(".map-command-header");
   const button = document.getElementById("mapHeaderMoreButton");
