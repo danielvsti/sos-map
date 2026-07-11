@@ -2072,9 +2072,11 @@ html, body {
     <p>Acceso restringido para usuarios con rol <strong>OPERATOR</strong> o <strong>ADMIN</strong>.</p>
     <label>Teléfono usuario operador/admin</label>
     <input id="panelLoginPhone" placeholder="+569XXXXXXXX" autocomplete="tel" />
+    <label>Código OTP</label>
+    <input id="panelLoginCode" inputmode="numeric" maxlength="8" placeholder="Ingresa el código recibido" autocomplete="one-time-code" />
     <button id="panelLoginButton">Entrar al panel</button>
     <div id="panelLoginError" class="login-error"></div>
-    <div class="login-hint">Para demo, el acceso se valida por teléfono registrado. Luego conectamos OTP/WhatsApp.</div>
+    <div class="login-hint">Primero solicita el código. En producción se envía mediante Twilio Verify.</div>
   </div>
 </div>
 
@@ -2267,6 +2269,7 @@ document.getElementById("panelLogoutButton").style.display = "inline-flex";
 
 async function panelLogin() {
 const phone = document.getElementById("panelLoginPhone").value.trim();
+const code = document.getElementById("panelLoginCode").value.trim();
 const errorEl = document.getElementById("panelLoginError");
 const button = document.getElementById("panelLoginButton");
 errorEl.textContent = "";
@@ -2278,18 +2281,31 @@ return;
 
 try {
 button.disabled = true;
-button.textContent = "Entrando...";
+button.textContent = code ? "Validando..." : "Enviando código...";
 
 const res = await fetch(`${API_BASE}/auth/panel-login`, {
 method: "POST",
 headers: jsonHeaders(),
-body: JSON.stringify({ phone, panel_type: "CONTROL_CENTER" })
+body: JSON.stringify({
+  phone,
+  panel_type: "CONTROL_CENTER",
+  code: code || undefined,
+  channel: SOS_CONFIG.DEMO_MODE ? "demo" : undefined
+})
 });
 
 const data = await res.json();
 
 if (!res.ok || data.status !== "ok") {
 throw new Error(data.message || "No fue posible ingresar");
+}
+
+if (data.requires_verification) {
+errorEl.textContent = data.demo_code
+  ? `Código demo: ${data.demo_code}`
+  : `Código enviado por ${data.otp_channel || "SMS"}.`;
+document.getElementById("panelLoginCode").focus();
+return;
 }
 
 setPanelToken(data.token);
@@ -4359,7 +4375,7 @@ async function loadMapState() {
 try {
 const [dashboardRes, publicRes] = await Promise.all([
 fetch(mapStateUrl(), { headers: authHeaders() }),
-fetch(publicMapStateUrl())
+fetch(publicMapStateUrl(), { headers: authHeaders() })
 ]);
 
 const data = await dashboardRes.json();
@@ -4539,6 +4555,9 @@ document.getElementById("status").className = "offline";
 
 document.getElementById("panelLoginButton").addEventListener("click", panelLogin);
 document.getElementById("panelLoginPhone").addEventListener("keydown", event => {
+if (event.key === "Enter") panelLogin();
+});
+document.getElementById("panelLoginCode").addEventListener("keydown", event => {
 if (event.key === "Enter") panelLogin();
 });
 document.getElementById("panelLogoutButton").addEventListener("click", logoutPanel);
