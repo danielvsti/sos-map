@@ -4314,6 +4314,51 @@ async function shareEventLocation() {
   await copyEventLocation();
 }
 
+async function createCallerLocationRequest() {
+  if (!selectedTicket?.id) throw new Error("No hay ticket seleccionado");
+  const phone = selectedTicket.manual_intake?.caller_phone || "";
+  const response = await fetch(`${TICKET_URL}/${selectedTicket.id}/location-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ phone })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || "No fue posible generar el enlace de ubicación");
+  return data.location_request;
+}
+
+function callerLocationMessage(request) {
+  const expires = request?.expires_at ? new Date(request.expires_at).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "unos minutos";
+  return `Centro de Control Municipal: abre este enlace y autoriza tu ubicación para georreferenciar la emergencia. El enlace vence a las ${expires}: ${request.url}`;
+}
+
+async function sendCallerLocationRequest(channel = "copy") {
+  try {
+    const request = await createCallerLocationRequest();
+    const message = callerLocationMessage(request);
+    const phone = cleanPhoneForTel(request.destination_phone || selectedTicket?.manual_intake?.caller_phone || "");
+    if (channel === "whatsapp") {
+      const digits = phone.replace(/\D/g, "");
+      if (!digits) throw new Error("El ticket no tiene un teléfono válido para WhatsApp");
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+      return;
+    }
+    if (channel === "sms") {
+      if (!phone) throw new Error("El ticket no tiene un teléfono válido para SMS");
+      window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, "_blank");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      alert("Enlace de ubicación copiado");
+    } catch {
+      window.prompt("Copia y envía este mensaje al vecino", message);
+    }
+  } catch (error) {
+    alert(error.message || "No fue posible preparar la solicitud de ubicación");
+  }
+}
+
 function updateOperatorTools() {
   const roles = currentPlatformSettings?.operator_tools?.dashboard_roles || ["OPERATOR", "ADMIN", "SUPER_ADMIN"];
   const dashboardButton = document.getElementById("dashboardShortcutButton");
@@ -5360,6 +5405,11 @@ const centralVoiceActionsHtml = isPhoneCall
       <strong>☎️ Comunicación telefónica municipal</strong>
       <p>Este caso fue registrado desde una llamada externa. La grabación aparecerá en Comunicaciones cuando WA-Center la informe.</p>
       ${callerPhoneClean ? `<button class="operator-voice-primary-button call" onclick="callDirectPhone('${callerPhoneClean}')">Volver a llamar</button>` : `<button class="operator-voice-primary-button" disabled>Sin teléfono de retorno</button>`}
+      <div class="ticket-location-tools">
+        <button class="btn-secondary" onclick="sendCallerLocationRequest('whatsapp')" ${callerPhoneClean ? "" : "disabled"}>WhatsApp con enlace GPS</button>
+        <button class="btn-secondary" onclick="sendCallerLocationRequest('sms')" ${callerPhoneClean ? "" : "disabled"}>SMS con enlace GPS</button>
+        <button class="btn-secondary" onclick="sendCallerLocationRequest('copy')">Copiar enlace GPS</button>
+      </div>
     </div>`
   : !secureVoiceEnabled
   ? `
