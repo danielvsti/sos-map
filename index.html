@@ -2742,10 +2742,10 @@ function currentControlCenterCode() {
   return String(panelSessionUser?.control_center_code || activeControlCenterCode || CONTROL_CENTER_CODE).trim().toUpperCase();
 }
 function mapStateUrl() {
-  return `${API_BASE}/dashboard/map-state?control_center_code=${encodeURIComponent(currentControlCenterCode())}`;
+  return `${API_BASE}/dashboard/map-state?control_center_code=${encodeURIComponent(currentControlCenterCode())}&_=${Date.now()}`;
 }
 function publicMapStateUrl() {
-  return `${API_BASE}/public/map-state?control_center_code=${encodeURIComponent(currentControlCenterCode())}`;
+  return `${API_BASE}/public/map-state?control_center_code=${encodeURIComponent(currentControlCenterCode())}&_=${Date.now()}`;
 }
 const TICKET_URL = `${API_BASE}/tickets`;
 const SIREN_ACTIVATE_URL = `${API_BASE}/public/sirens/activate`;
@@ -5668,8 +5668,8 @@ async function refreshSelectedTicketPanel() {
 async function loadMapState() {
 try {
 const [dashboardRes, publicRes] = await Promise.all([
-fetch(mapStateUrl(), { headers: authHeaders() }),
-fetch(publicMapStateUrl(), { headers: authHeaders() })
+fetch(mapStateUrl(), { headers: authHeaders(), cache: "no-store" }),
+fetch(publicMapStateUrl(), { headers: authHeaders(), cache: "no-store" })
 ]);
 
 const data = await dashboardRes.json();
