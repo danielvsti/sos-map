@@ -2795,8 +2795,13 @@ document.getElementById("panelLogoutButton").style.display = "none";
 }
 
 function showControlPanel(user) {
+const previousControlCenterCode = String(activeControlCenterCode || "").trim().toUpperCase();
 panelSessionUser = user || panelSessionUser;
-activeControlCenterCode = currentControlCenterCode();
+const nextControlCenterCode = currentControlCenterCode();
+activeControlCenterCode = nextControlCenterCode;
+if (previousControlCenterCode && previousControlCenterCode !== nextControlCenterCode) {
+resetMapViewportForSessionChange();
+}
 document.getElementById("loginOverlay").classList.add("hidden");
 const pill = document.getElementById("operatorSession");
 pill.style.display = "inline-flex";
@@ -2894,6 +2899,8 @@ if (mapUpdateInterval) {
 clearInterval(mapUpdateInterval);
 mapUpdateInterval = null;
 }
+panelSessionUser = null;
+resetMapViewportForSessionChange();
 showLoginOverlay("Sesión cerrada.");
 }
 
@@ -3060,6 +3067,12 @@ map.getPane("ticketsPane").style.zIndex = 900;
 
 let mapInitialized = false;
 let userMovedMap = false;
+
+function resetMapViewportForSessionChange() {
+  userMovedMap = false;
+  mapInitialized = false;
+  lastControlCenter = null;
+}
 
 
 map.on("dragstart", () => {
