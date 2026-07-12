@@ -4329,7 +4329,14 @@ function updateOperatorTools() {
     </a>`).join("") : '<div style="color:#64748b">No hay números configurados.</div>';
 }
 
-function manualTicketCategories() {
+async function manualTicketCategories() {
+  try {
+    const response = await fetch(`${API_BASE}/settings/emergency-categories`, { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && Array.isArray(data.categories)) return data.categories.filter(category => category?.enabled !== false && category?.type);
+  } catch (error) {
+    console.warn("No fue posible actualizar categorías operacionales", error);
+  }
   const configured = currentPlatformSettings?.neighbor_app?.emergency_categories || [];
   return configured.filter(category => category?.enabled !== false && category?.type);
 }
@@ -4340,8 +4347,8 @@ function useVisibleMapCenterForManualTicket() {
   document.getElementById("manualTicketLongitude").value = Number(center.lng).toFixed(6);
 }
 
-function openManualTicketForm() {
-  const categories = manualTicketCategories();
+async function openManualTicketForm() {
+  const categories = await manualTicketCategories();
   const select = document.getElementById("manualTicketCategory");
   select.innerHTML = categories.map(category => `<option value="${escapeHtml(category.type)}" data-priority="${Number(category.priority || 2)}">${escapeHtml(category.icon || "🆘")} ${escapeHtml(category.title || category.type)}</option>`).join("");
   if (!categories.length) {
@@ -5214,6 +5221,7 @@ const data = await res.json();
 
 const ticket = data.ticket;
 ticket.voice_sessions = data.voice_sessions || [];
+ticket.manual_intake = data.manual_intake || null;
  selectedTicket = ticket;	
 const now = Date.now();
 
@@ -5270,6 +5278,9 @@ const reportsSummaryHtml = reportCount > 1
   : `<div class="ticket-report-summary">👥 1 reporte ciudadano asociado a este ticket.</div>`;
 const ticketMeta = getTicketCreatedMetadata(data.actions);
 const isPhysicalDevice = isPhysicalSosTicket(ticket);
+const isPhoneCall = String(ticket.source_type || "").toUpperCase() === "PHONE_CALL";
+const manualIntake = ticket.manual_intake || ticketMeta || {};
+const callerPhoneClean = cleanPhoneForTel(manualIntake.caller_phone || "");
 const physicalDeviceName = ticketMeta.device_name || ticketMeta.name || ticket.title || "Botón SOS físico";
 const physicalDeviceId = ticketMeta.platform_id || ticketMeta.device_id || ticketMeta.ident || ticket.source_event_id || "-";
 const physicalDeviceIdent = ticketMeta.ident || "-";
@@ -5301,7 +5312,14 @@ const physicalDeviceHtml = isPhysicalDevice
 
 const neighborHtml = isPhysicalDevice
   ? physicalDeviceHtml
-  : `
+  : isPhoneCall
+    ? `<div class="ticket-content-section" style="background:#eff6ff;">
+<strong>Llamada al teléfono municipal:</strong><br>
+${escapeHtml(manualIntake.caller_name || "Persona no identificada")}<br>
+📞 ${escapeHtml(manualIntake.caller_phone || "Sin teléfono informado")}<br>
+📍 ${escapeHtml(manualIntake.reported_address || "Dirección no informada")}
+</div>`
+    : `
 <div class="ticket-content-section">
 <strong>Vecino:</strong><br>
 ${ticket.citizen_name || "-"}<br>
@@ -5337,7 +5355,13 @@ const voiceBannerHtml = centralIncomingVoice
   : resolverVoiceWaiting
     ? `<div class="operator-incoming-voice-banner" style="background:#eff6ff;border-color:#93c5fd;color:#1e3a8a;animation:none;">📞 Llamada dirigida al resolutor<span>${escapeHtml(ticket.resolver_name || "El resolutor asignado")} recibió el aviso en su aplicación.</span></div>`
     : "";
-const centralVoiceActionsHtml = !secureVoiceEnabled
+const centralVoiceActionsHtml = isPhoneCall
+  ? `<div class="operator-voice-control-card">
+      <strong>☎️ Comunicación telefónica municipal</strong>
+      <p>Este caso fue registrado desde una llamada externa. La grabación aparecerá en Comunicaciones cuando WA-Center la informe.</p>
+      ${callerPhoneClean ? `<button class="operator-voice-primary-button call" onclick="callDirectPhone('${callerPhoneClean}')">Volver a llamar</button>` : `<button class="operator-voice-primary-button" disabled>Sin teléfono de retorno</button>`}
+    </div>`
+  : !secureVoiceEnabled
   ? `
     <div class="operator-voice-control-card">
       <strong>📞 Comunicación con vecino</strong>
