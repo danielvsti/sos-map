@@ -5055,6 +5055,58 @@ function renderCommunications(actions) {
   }).join("");
 }
 
+function renderVoiceSessionRecordings(voiceSessions) {
+  const sessions = Array.isArray(voiceSessions) ? voiceSessions : [];
+  if (sessions.length === 0) {
+    return `<div class="comm-card"><strong>📞 Llamadas WA-Center</strong><br><span class="comm-meta">Sin sesiones de llamada registradas para este ticket.</span></div>`;
+  }
+
+  const terminalStates = new Set(["ENDED", "FAILED", "NO_ANSWER", "EXPIRED", "REJECTED"]);
+  const statusLabels = {
+    CREATED: "Creada",
+    RINGING: "Llamando",
+    CONNECTING: "Conectando",
+    CONNECTED: "Conectada",
+    ENDED: "Finalizada",
+    FAILED: "Fallida",
+    NO_ANSWER: "Sin respuesta",
+    EXPIRED: "Expirada",
+    REJECTED: "Rechazada"
+  };
+
+  return sessions.map((session, index) => {
+    const status = String(session.status || "CREATED").toUpperCase();
+    const recordingUrl = escapeHtml(session.recording_url || "");
+    const recordingId = escapeHtml(session.recording_id || "");
+    const waSessionId = escapeHtml(session.wa_center_session_id || "");
+    const waCallId = escapeHtml(session.wa_center_call_id || "");
+    const duration = Number(session.duration_seconds);
+    const startedAt = session.connected_at || session.started_at || session.created_at;
+    const endedAt = session.ended_at || null;
+    const recordingState = recordingUrl
+      ? "✅ Grabación disponible"
+      : terminalStates.has(status)
+        ? "⚠️ WA-Center aún no ha enviado la grabación"
+        : "⏳ Llamada en curso o grabación pendiente";
+
+    return `
+      <div class="comm-card">
+        <strong>📞 Llamada WA-Center ${sessions.length > 1 ? index + 1 : ""}</strong><br>
+        Estado: ${escapeHtml(statusLabels[status] || status)}<br>
+        ${Number.isFinite(duration) ? `Duración: ${Math.max(0, Math.round(duration))} segundos<br>` : ""}
+        <strong>${recordingState}</strong>
+        ${recordingUrl ? `<audio controls playsinline preload="metadata" data-communication-media="${recordingUrl}" src="${recordingUrl}"></audio>` : ""}
+        <div class="comm-meta">
+          ${startedAt ? `Inicio: ${new Date(startedAt).toLocaleString()}${endedAt ? ` · Fin: ${new Date(endedAt).toLocaleString()}` : ""}<br>` : ""}
+          ${waSessionId ? `Sesión WA: ${waSessionId}<br>` : ""}
+          ${waCallId ? `Call ID: ${waCallId}<br>` : ""}
+          ${recordingId ? `Recording ID: ${recordingId}` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
 function captureCommunicationPlaybackState() {
   const state = new Map();
   document.querySelectorAll("#ticketContent [data-communication-media]").forEach((media) => {
@@ -5320,6 +5372,7 @@ const shortId = shortTicketId(ticket.id);
 const sourceEventId = ticket.source_event_id || "-";
 
 const communicationHtml = renderCommunications(data.actions);
+const voiceRecordingsHtml = renderVoiceSessionRecordings(ticket.voice_sessions);
 const reports = Array.isArray(data.reports) ? data.reports : [];
 const reportCount = Number(ticket.report_count || reports.length || 0);
 const reportsHtml = reports.length
@@ -5626,6 +5679,7 @@ ${resolverActionsHtml}
 
 	<div class="ticket-content-section">
 	<strong>Comunicaciones</strong>
+	${voiceRecordingsHtml}
 	${communicationHtml}
 </div>
 
