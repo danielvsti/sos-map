@@ -5021,10 +5021,12 @@ function renderCommunications(actions) {
     }
 
     if (String(action.action_type || "").startsWith("VOICE_")) {
+      const recordingUrl = escapeHtml(meta.recording_url || "");
       return `
         <div class="comm-card">
           <strong>📞 Llamada</strong><br>
           ${action.description || "Actualización de la llamada"}
+          ${recordingUrl ? `<audio controls playsinline preload="metadata" data-communication-media="${recordingUrl}" src="${recordingUrl}"></audio>` : ""}
           <div class="comm-meta">${date}</div>
         </div>
       `;
