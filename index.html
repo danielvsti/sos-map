@@ -5078,6 +5078,7 @@ function renderVoiceSessionRecordings(voiceSessions) {
     const status = String(session.status || "CREATED").toUpperCase();
     const recordingUrl = escapeHtml(session.recording_url || "");
     const recordingId = escapeHtml(session.recording_id || "");
+    const recordingRequested = session.recording_requested;
     const waSessionId = escapeHtml(session.wa_center_session_id || "");
     const waCallId = escapeHtml(session.wa_center_call_id || "");
     const duration = Number(session.duration_seconds);
@@ -5085,9 +5086,13 @@ function renderVoiceSessionRecordings(voiceSessions) {
     const endedAt = session.ended_at || null;
     const recordingState = recordingUrl
       ? "✅ Grabación disponible"
-      : terminalStates.has(status)
-        ? "⚠️ WA-Center aún no ha enviado la grabación"
-        : "⏳ Llamada en curso o grabación pendiente";
+      : recordingRequested === false
+        ? "🔒 Llamada no grabada por política del Centro de Control"
+        : recordingRequested === true
+          ? (terminalStates.has(status)
+            ? "⏳ Grabación solicitada; pendiente de recepción"
+            : "⏳ Llamada en curso; grabación solicitada")
+          : "ℹ️ Grabación no disponible";
 
     return `
       <div class="comm-card">
