@@ -3113,6 +3113,14 @@ function getResolverIcon(resolver) {
 
 
 function renderDevice(device) {
+	if (!isValidCoordinate(device.latitude, device.longitude)) {
+    if (deviceMarkers[device.id]) {
+      map.removeLayer(deviceMarkers[device.id]);
+      delete deviceMarkers[device.id];
+    }
+    return;
+  }
+
 	const name = device.name || `Botón SOS ${device.id}`;
 	const icon = getSosIcon(device);
 
@@ -3163,6 +3171,14 @@ function renderDevice(device) {
 
 
 function renderSiren(siren) {
+  if (!isValidCoordinate(siren.latitude, siren.longitude)) {
+    if (sirenMarkers[siren.id]) {
+      map.removeLayer(sirenMarkers[siren.id]);
+      delete sirenMarkers[siren.id];
+    }
+    return;
+  }
+
   const latLng = getVisualLatLng(siren);
   const active =
     siren.active === true ||
@@ -3209,7 +3225,11 @@ function renderSiren(siren) {
 
 
 function isValidCoordinate(lat, lng) {
-  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+  if (lat == null || lng == null || String(lat).trim() === "" || String(lng).trim() === "") return false;
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
 }
 
 function coordKey(lat, lng) {
