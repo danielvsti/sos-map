@@ -1,0 +1,82 @@
+:root {
+  --queltu-ink: #151a1d;
+  --queltu-ink-soft: #293138;
+  --queltu-red: #d94742;
+  --queltu-red-dark: #a91f28;
+  --queltu-coral: #f07a69;
+  --queltu-sage: #a8ad94;
+  --queltu-paper: #f4f5f8;
+}
+
+.login-overlay {
+  background:
+    radial-gradient(circle at 15% 0, rgba(240, 122, 105, .20), transparent 32rem),
+    radial-gradient(circle at 90% 100%, rgba(168, 173, 148, .16), transparent 34rem),
+    rgba(11, 14, 16, .92);
+  backdrop-filter: blur(12px);
+}
+.login-card {
+  border: 1px solid rgba(255,255,255,.48);
+  border-top: 6px solid var(--queltu-red) !important;
+  background: rgba(255,255,255,.97);
+  box-shadow: 0 34px 90px rgba(0,0,0,.48);
+}
+.queltu-login-logo {
+  display: block;
+  width: min(230px, 68%);
+  height: auto;
+  margin: 0 auto 20px;
+  object-fit: contain;
+}
+.login-card .panel-title { color: var(--queltu-red) !important; letter-spacing: .09em; text-transform: uppercase; }
+.login-card input:focus {
+  outline: none;
+  border-color: var(--queltu-red);
+  box-shadow: 0 0 0 4px rgba(217, 71, 66, .13);
+}
+.login-card button {
+  background: linear-gradient(180deg, #ef5650 0%, var(--queltu-red) 50%, #b92831 100%);
+  box-shadow: 0 14px 28px rgba(217, 71, 66, .28), inset 0 1px rgba(255,255,255,.25);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.login-card button:hover { transform: translateY(-1px); box-shadow: 0 18px 34px rgba(217, 71, 66, .32); }
+.login-card button:active { transform: translateY(0); }
+
+.map-brand-kicker { color: var(--queltu-red) !important; }
+.panel.map-command-header,
+.map-command-header {
+  border: 1px solid rgba(255,255,255,.76) !important;
+  border-top: 3px solid var(--queltu-red) !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 20px 54px rgba(21, 26, 29, .20) !important;
+  backdrop-filter: blur(16px) !important;
+}
+.municipality-logo-shell { border-color: #dfe3e6 !important; box-shadow: 0 8px 20px rgba(21,26,29,.10) !important; }
+.product-signature {
+  color: var(--queltu-ink) !important;
+  background: linear-gradient(180deg, #fff, #f0f2f4) !important;
+  border: 1px solid #dfe3e6 !important;
+  border-radius: 14px;
+  padding: 5px 9px 5px 5px;
+  box-shadow: 0 7px 18px rgba(21,26,29,.09);
+}
+.product-logo { width: 34px; height: 34px; max-height: none; opacity: 1; object-fit: contain; }
+#panelLogoutButton {
+  border-color: rgba(255,255,255,.12) !important;
+  background: linear-gradient(180deg, #30383e, var(--queltu-ink)) !important;
+  color: #fff !important;
+}
+.map-filter-button {
+  border-color: rgba(217,71,66,.48) !important;
+  background: linear-gradient(180deg, #fff, #fff2ef) !important;
+  color: var(--queltu-ink) !important;
+}
+.map-filter-button:hover { border-color: var(--queltu-red) !important; }
+
+@media (max-width: 720px) {
+  .login-overlay { padding: 14px; align-items: flex-start; overflow-y: auto; }
+  .login-card { margin: max(14px, env(safe-area-inset-top)) 0 18px; padding: 22px; }
+  .queltu-login-logo { width: min(190px, 62%); margin-bottom: 14px; }
+  .login-card h2 { font-size: 28px; }
+  .product-signature span { display: none; }
+}
