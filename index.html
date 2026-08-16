@@ -2198,7 +2198,7 @@ Selecciona una emergencia.
 
 <script>
 const SOS_CONFIG = window.SOS_CONFIG || {};
-const API_BASE = SOS_CONFIG.API_BASE || "https://sos.vsti.cl";
+const API_BASE = SOS_CONFIG.API_BASE || "https://api.queltu.com";
 const CONTROL_CENTER_CODE = SOS_CONFIG.CONTROL_CENTER_CODE || new URLSearchParams(location.search).get("cc") || "CC-VINA";
 let activeControlCenterCode = CONTROL_CENTER_CODE;
 function currentControlCenterCode() {
@@ -2732,6 +2732,28 @@ function platformPolicyValue(section, key, fallback = null) {
   return value == null ? fallback : value;
 }
 
+function platformTerm(key, fallback) {
+  const terminology = currentPlatformSettings?.terminology || {};
+  const snakeKey = String(key || "").replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+  const value = terminology[key] ?? terminology[snakeKey];
+  return String(value || fallback || "").trim();
+}
+
+function platformTermLower(key, fallback) {
+  const value = platformTerm(key, fallback);
+  return value ? value.charAt(0).toLowerCase() + value.slice(1) : "";
+}
+
+function platformTermPlural(key, fallback) {
+  const value = platformTerm(key, fallback);
+  if (!value || /s$/i.test(value)) return value;
+  return /[aeiouáéíóú]$/i.test(value) ? `${value}s` : `${value}es`;
+}
+
+function platformVertical() {
+  return String(currentPlatformSettings?.vertical || "CITY").toUpperCase();
+}
+
 function activeVoiceSessionForTicket(ticket) {
   if (!ticket) return null;
   const sessions = Array.isArray(ticket.voice_sessions) ? ticket.voice_sessions : [];
@@ -2969,7 +2991,7 @@ function ticketIncidentSector(ticket) {
   // Campo oficial normalizado: viene desde tickets.event_sector_name cuando el backend
   // clasifica el punto contra control_center_sectors / Unidades Vecinales oficiales.
   // Mantener una sola prioridad evita que el tooltip y el panel lateral muestren sectores distintos.
-  return (
+  const officialSector = (
     ticket?.event_sector_name ||
     ticket?.incident_sector_name ||
     ticket?.incident_sector ||
@@ -2977,8 +2999,15 @@ function ticketIncidentSector(ticket) {
     ticket?.sector_name ||
     ticket?.sector_estimado ||
     ticket?.sector_aproximado ||
-    mapSectorFromCoords(ticket?.latitude, ticket?.longitude)
+    ""
   );
+  if (officialSector) {
+    return String(officialSector).replace(/\bcomuna\b/gi, platformTermLower("zone", "zona"));
+  }
+  if (platformVertical() !== "CITY") {
+    return `${platformTerm("zone", "Área")} no determinada`;
+  }
+  return mapSectorFromCoords(ticket?.latitude, ticket?.longitude);
 }
 
 function ticketSectorMethod(ticket) {
@@ -4019,7 +4048,8 @@ function openAssignmentModal(mode = "assign") {
   const subtitle = document.getElementById("assignmentSubtitle");
   const list = document.getElementById("assignmentList");
 
-  title.textContent = mode === "reassign" ? "Reasignar resolutor" : "Asignar resolutor";
+  const responderTerm = platformTermLower("responder", "resolutor");
+  title.textContent = mode === "reassign" ? `Reasignar ${responderTerm}` : `Asignar ${responderTerm}`;
   subtitle.textContent = `${shortTicketId(selectedTicket.id)} · ${selectedTicket.title || "Ticket"} · ${ticketIncidentSector(selectedTicket)}`;
 
   const resolvers = [...(currentResolvers || [])]
@@ -4036,11 +4066,11 @@ function openAssignmentModal(mode = "assign") {
     });
 
   if (!resolvers.length) {
-    list.innerHTML = `<div class="assignment-empty">No hay resolutores cargados en el mapa.</div>`;
+    list.innerHTML = `<div class="assignment-empty">No hay ${escapeHtml(platformTermPlural("responder", "resolutores").toLowerCase())} cargados en el mapa.</div>`;
   } else {
     list.innerHTML = resolvers.map((resolver) => `
       <button class="assignment-row" onclick="manualAssignSelectedTicket('${resolver.id}')">
-        <span class="resolver-name">👮 ${resolver.full_name || "Resolutor"}</span>
+        <span class="resolver-name">👮 ${resolver.full_name || platformTerm("responder", "Resolutor")}</span>
         <span>
           <span class="assignment-badge ${resolver.className}">${resolverStateLabel(resolver.displayState)}</span>
           <span class="assignment-badge ${resolver.active > 0 ? "warn" : "ok"}">${resolver.active} caso(s)</span>
@@ -4115,6 +4145,12 @@ const data = await res.json();
 const ticket = data.ticket;
 ticket.voice_sessions = data.voice_sessions || [];
  selectedTicket = ticket;	
+const endUserTerm = platformTerm("endUser", "Vecino");
+const endUserLower = platformTermLower("endUser", "vecino");
+const endUsersTerm = platformTermPlural("endUser", "Vecinos");
+const responderTerm = platformTerm("responder", "Resolutor");
+const responderLower = platformTermLower("responder", "resolutor");
+const zoneTerm = platformTerm("zone", "Sector");
 const now = Date.now();
 
 const createdAt = new Date(ticket.created_at).getTime();
@@ -4157,8 +4193,8 @@ const reportCount = Number(ticket.report_count || reports.length || 0);
 const reportsHtml = reports.length
   ? reports.map((report, index) => `
       <div class="ticket-report-item ${report.is_primary_report ? "primary" : ""}">
-        <strong>${report.is_primary_report ? "Reporte inicial" : `Reporte ciudadano ${index + 1}`}</strong><br>
-        ${escapeHtml(report.reporter_name || "Vecino")} · ${new Date(report.created_at).toLocaleString()}<br>
+        <strong>${report.is_primary_report ? "Reporte inicial" : `Reporte de ${escapeHtml(endUserLower)} ${index + 1}`}</strong><br>
+        ${escapeHtml(report.reporter_name || endUserTerm)} · ${new Date(report.created_at).toLocaleString()}<br>
         ${report.title ? `<span>${escapeHtml(report.title)}</span><br>` : ""}
         ${report.description ? `<span>${escapeHtml(report.description)}</span><br>` : ""}
         ${report.distance_meters != null ? `<small>Distancia al caso original: ${Math.round(Number(report.distance_meters))} m</small>` : ""}
@@ -4166,8 +4202,8 @@ const reportsHtml = reports.length
     `).join("")
   : "Sin reportes asociados todavía.";
 const reportsSummaryHtml = reportCount > 1
-  ? `<div class="ticket-report-summary">👥 ${reportCount} vecinos han reportado este mismo incidente. La central opera un solo ticket y usa los reportes como testimonios/antecedentes asociados.</div>`
-  : `<div class="ticket-report-summary">👥 1 reporte ciudadano asociado a este ticket.</div>`;
+  ? `<div class="ticket-report-summary">👥 ${reportCount} ${escapeHtml(endUsersTerm.toLowerCase())} han reportado este mismo incidente. El centro opera un solo ticket y usa los reportes como testimonios/antecedentes asociados.</div>`
+  : `<div class="ticket-report-summary">👥 1 reporte de ${escapeHtml(endUserLower)} asociado a este ticket.</div>`;
 const ticketMeta = getTicketCreatedMetadata(data.actions);
 const isPhysicalDevice = isPhysicalSosTicket(ticket);
 const physicalDeviceName = ticketMeta.device_name || ticketMeta.name || ticket.title || "Botón SOS físico";
@@ -4203,7 +4239,7 @@ const neighborHtml = isPhysicalDevice
   ? physicalDeviceHtml
   : `
 <div class="ticket-content-section">
-<strong>Vecino:</strong><br>
+<strong>${escapeHtml(endUserTerm)}:</strong><br>
 ${ticket.citizen_name || "-"}<br>
 📞 ${ticket.citizen_phone || "-"}<br>
 📍 ${ticket.declared_address || "-"}
@@ -4218,8 +4254,8 @@ const hasBlockingResolver = ticket.assigned_resolver_id && ticket.resolver_name 
 const needsAssignment = (!hasBlockingResolver || assignmentWasRejected) && !terminalTicket;
 const canManualReassign = !!hasBlockingResolver && !terminalTicket;
 const assignmentButtonHtml = needsAssignment
-  ? `<button class="btn-secondary" onclick="openAssignmentModal('assign')">👮 Asignar resolutor</button>`
-  : (canManualReassign ? `<button class="btn-secondary" onclick="openAssignmentModal('reassign')">🔁 Reasignar resolutor</button>` : "");
+  ? `<button class="btn-secondary" onclick="openAssignmentModal('assign')">👮 Asignar ${escapeHtml(responderLower)}</button>`
+  : (canManualReassign ? `<button class="btn-secondary" onclick="openAssignmentModal('reassign')">🔁 Reasignar ${escapeHtml(responderLower)}</button>` : "");
 
 const sirenControlsEnabled = platformFeatureEnabled("sirens_enabled", true)
   && platformPolicyValue("siren_policy", "operator_manual_control_enabled", true) !== false;
@@ -4233,15 +4269,15 @@ const resolverVoiceWaiting = secureVoiceEnabled && isResolverVoiceWaiting(ticket
 const activeVoice = activeVoiceSessionForTicket(ticket);
 const activeVoiceId = activeVoice?.id || activeVoice?.wa_center_session_id || "latest";
 const voiceBannerHtml = centralIncomingVoice
-  ? `<div class="operator-incoming-voice-banner">📞 Llamada entrante del vecino<span>El vecino espera que la central atienda esta llamada segura.</span></div>`
+  ? `<div class="operator-incoming-voice-banner">📞 Llamada entrante de ${escapeHtml(endUserLower)}<span>${escapeHtml(endUserTerm)} espera que el centro atienda esta llamada segura.</span></div>`
   : resolverVoiceWaiting
-    ? `<div class="operator-incoming-voice-banner" style="background:#eff6ff;border-color:#93c5fd;color:#1e3a8a;animation:none;">📞 Vecino pidió hablar con el resolutor<span>Esperando que ${escapeHtml(ticket.resolver_name || "el resolutor asignado")} atienda desde la App Resolutor.</span></div>`
+    ? `<div class="operator-incoming-voice-banner" style="background:#eff6ff;border-color:#93c5fd;color:#1e3a8a;animation:none;">📞 ${escapeHtml(endUserTerm)} pidió hablar con ${escapeHtml(responderLower)}<span>Esperando que ${escapeHtml(ticket.resolver_name || `el ${responderLower} asignado`)} atienda desde su app.</span></div>`
     : "";
 const centralVoiceActionsHtml = !secureVoiceEnabled
   ? `<button class="btn-secondary" disabled style="background:#9ca3af;cursor:not-allowed;">📞 Llamadas deshabilitadas</button>`
   : (centralIncomingVoice
-    ? `<button class="btn-secondary" onclick="joinOperatorVoiceSession('${escapeHtml(activeVoiceId)}')">☎️ Atender llamada del vecino</button>`
-    : `<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Llamar vecino desde central</button>`);
+    ? `<button class="btn-secondary" onclick="joinOperatorVoiceSession('${escapeHtml(activeVoiceId)}')">☎️ Atender llamada de ${escapeHtml(endUserLower)}</button>`
+    : `<button class="btn-secondary" onclick="registerOperatorCall('voice')">📞 Llamar a ${escapeHtml(endUserLower)}</button>`);
 
 const resolverActionsHtml = isPhysicalDevice
   ? `
@@ -4344,9 +4380,9 @@ document.getElementById(
       ${ticket.id}
     </span><br><br>
     <strong>Estado:</strong> ${ticket.state}<br>
-    <strong>Reportes ciudadanos:</strong> ${reportCount || 1}<br>
+    <strong>Reportes asociados:</strong> ${reportCount || 1}<br>
     <strong>Tipo:</strong> ${emergencyVisual(ticket).icon} ${emergencyVisual(ticket).label}<br>
-    <strong>Sector evento:</strong> ${ticketIncidentSector(ticket)}<br>
+    <strong>${escapeHtml(zoneTerm)} del evento:</strong> ${ticketIncidentSector(ticket)}<br>
     ${ticketSectorMetaHtml(ticket)}
     <strong>Origen:</strong> ${ticket.source_type || "-"}<br>
     <strong>Evento origen:</strong><br>
@@ -4388,9 +4424,9 @@ ${formatDuration(resolutionTime)}
 ${neighborHtml}
 
 <div class="ticket-content-section">
-<strong>Resolutor:</strong><br>
+<strong>${escapeHtml(responderTerm)}:</strong><br>
 👮 ${assignmentWasRejected ? "Asignación rechazada / requiere reasignación" : (ticket.resolver_name || "Sin asignar")}
-${assignmentWasRejected ? `<div style="margin-top:8px;padding:10px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:14px;line-height:1.3;">⚠️ El resolutor rechazó este caso. Reintenta la asignación para enviarlo a otro resolutor disponible.</div>` : ""}
+${assignmentWasRejected ? `<div style="margin-top:8px;padding:10px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:14px;line-height:1.3;">⚠️ ${escapeHtml(responderTerm)} rechazó este caso. Reintenta la asignación para enviarlo a otro ${escapeHtml(responderLower)} disponible.</div>` : ""}
 
 <div class="ticket-actions">
 
