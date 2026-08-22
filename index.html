@@ -2606,7 +2606,7 @@ html, body {
   </div>
 
   <div class="map-header-actions">
-    <button id="manualTicketButton" class="operator-tool-button" type="button">➕ Ticket telefónico</button>
+    <button id="manualTicketButton" class="operator-tool-button" type="button">➕ Nuevo aviso</button>
     <button id="emergencyDirectoryButton" class="operator-tool-button" type="button">☎️ Emergencias</button>
     <button id="dashboardShortcutButton" class="operator-tool-button" type="button" disabled>📊 Dashboard</button>
     <button id="mapFilterButton" class="map-filter-button" type="button">🧭 Filtros</button>
@@ -2628,10 +2628,11 @@ html, body {
 <div id="manualTicketOverlay" class="manual-ticket-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="manualTicketTitle">
   <form id="manualTicketForm" class="manual-ticket-card">
     <div class="manual-ticket-head">
-      <div><h2 id="manualTicketTitle">Ingresar emergencia telefónica</h2><p>Registra la llamada municipal como ticket operacional.</p></div>
+      <div><h2 id="manualTicketTitle">Ingresar aviso a la central</h2><p>Registra el canal operado y crea un ticket trazable.</p></div>
       <button id="manualTicketClose" class="manual-ticket-close" type="button" aria-label="Cerrar">×</button>
     </div>
     <div class="manual-ticket-grid">
+      <label>Canal de ingreso<select id="manualTicketChannel" required><option value="PHONE_14XX">Teléfono municipal 14XX</option><option value="WHATSAPP_OPERATOR">WhatsApp atendido por operador</option><option value="RADIO">Radio operacional</option><option value="WALK_IN">Atención presencial</option><option value="OTHER">Otro ingreso manual</option></select></label>
       <label>Tipo de emergencia<select id="manualTicketCategory" required></select></label>
       <label>Prioridad<select id="manualTicketPriority"><option value="1">1 · Crítica</option><option value="2" selected>2 · Alta</option><option value="3">3 · Media</option><option value="4">4 · Baja</option><option value="5">5 · Informativa</option></select></label>
       <label>Nombre de quien llama<input id="manualTicketCallerName" maxlength="160" autocomplete="name"></label>
@@ -3132,7 +3133,11 @@ function applyControlCenterBranding(controlCenter) {
 
   const productLogo = document.getElementById("productLogo");
   const productLogoUrl = safeText(controlCenter.product_logo_url);
-  if (productLogo && productLogoUrl) productLogo.src = productLogoUrl;
+  if (productLogo && productLogoUrl) {
+    productLogo.src = /(^|\/)queltu-logo\.png(?:\?|$)/i.test(productLogoUrl)
+      ? "queltu-symbol.png"
+      : productLogoUrl;
+  }
 
   const title = document.getElementById("controlCenterTitle");
   const subtitle = document.getElementById("controlCenterSubtitle");
@@ -4482,9 +4487,10 @@ async function submitManualTicket(event) {
   const submit = form.querySelector('button[type="submit"]');
   const message = document.getElementById("manualTicketMessage");
   submit.disabled = true;
-  message.textContent = "Creando ticket telefónico…";
+  message.textContent = "Creando ticket operacional…";
   try {
     const payload = {
+      intake_channel: document.getElementById("manualTicketChannel").value,
       alert_type: document.getElementById("manualTicketCategory").value,
       priority: Number(document.getElementById("manualTicketPriority").value),
       caller_name: document.getElementById("manualTicketCallerName").value.trim() || null,
@@ -4510,7 +4516,7 @@ async function submitManualTicket(event) {
     await loadMapState();
     if (data.ticket?.id) await openTicketPanel(data.ticket.id);
   } catch (error) {
-    message.textContent = error.message || "No fue posible crear el ticket telefónico.";
+    message.textContent = error.message || "No fue posible crear el aviso.";
   } finally {
     submit.disabled = false;
   }
