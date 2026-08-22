@@ -2061,6 +2061,25 @@ html, body {
 }
 /* --- END SOS MAP HEADER RESPONSIVE RESET V3 --- */
 
+.manual-intake-overlay { position:fixed; inset:0; z-index:5000; display:grid; place-items:center; padding:20px; background:rgba(15,23,42,.66); backdrop-filter:blur(4px); }
+.manual-intake-overlay.hidden { display:none; }
+.manual-intake-card { width:min(720px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; border-radius:22px; background:#fff; box-shadow:0 28px 80px rgba(15,23,42,.35); }
+.manual-intake-head { display:flex; justify-content:space-between; gap:16px; padding:20px 22px 12px; border-bottom:1px solid #e2e8f0; }
+.manual-intake-head h2 { margin:0 0 5px; font-size:22px; }
+.manual-intake-head p { margin:0; color:#64748b; font-size:13px; }
+.manual-intake-close { border:0; width:38px; height:38px; border-radius:999px; background:#e2e8f0; font-size:24px; cursor:pointer; }
+.manual-intake-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:18px 22px; }
+.manual-intake-grid label { display:grid; gap:6px; color:#334155; font-size:12px; font-weight:800; }
+.manual-intake-grid input,.manual-intake-grid select,.manual-intake-grid textarea { width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:12px; padding:11px 12px; font:inherit; color:#0f172a; background:#fff; }
+.manual-intake-grid .full { grid-column:1 / -1; }
+.manual-intake-coordinates { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:end; }
+.manual-intake-actions { display:flex; justify-content:flex-end; align-items:center; gap:10px; padding:0 22px 22px; }
+.manual-intake-actions button { border:0; border-radius:12px; padding:11px 16px; font-weight:900; cursor:pointer; }
+.manual-intake-submit { background:#dc2626; color:#fff; }
+.manual-intake-status { margin-right:auto; font-size:13px; color:#475569; }
+.map-intake-button { height:40px; border:0; border-radius:12px; padding:0 14px; background:#dc2626; color:#fff; font-weight:900; cursor:pointer; }
+@media(max-width:700px){.manual-intake-grid{grid-template-columns:1fr}.manual-intake-grid .full{grid-column:auto}.manual-intake-coordinates{grid-template-columns:1fr 1fr}.manual-intake-coordinates button{grid-column:1/-1}}
+
 </style>
 <link rel="stylesheet" href="queltu-brand.css?v=20260716-2" />
 </head>
@@ -2069,7 +2088,7 @@ html, body {
 
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
-    <img src="queltu-logo.png" class="queltu-login-logo" alt="QUELTU" />
+    <img src="queltu-symbol.png" class="queltu-login-logo" alt="QUELTU" />
     <div class="panel-title">QUELTU · Protección conectada</div>
     <h2>Panel de control</h2>
     <p>Acceso restringido para usuarios con rol <strong>OPERATOR</strong> o <strong>ADMIN</strong>.</p>
@@ -2111,6 +2130,7 @@ html, body {
   </div>
 
   <div class="map-header-actions">
+    <button id="manualIntakeButton" class="map-intake-button" type="button">＋ Nuevo aviso</button>
     <button id="mapFilterButton" class="map-filter-button" type="button">🧭 Filtros</button>
     <button id="panelLogoutButton" class="btn-logout" style="display:none">Cerrar sesión</button>
   </div>
@@ -2123,6 +2143,30 @@ html, body {
 
 <div id="map"></div>
 <div id="boundaryBadge" class="boundary-badge hidden">Límite operacional: <strong>sin cargar</strong></div>
+
+<div id="manualIntakeOverlay" class="manual-intake-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="manualIntakeTitle">
+  <form id="manualIntakeForm" class="manual-intake-card">
+    <div class="manual-intake-head">
+      <div><h2 id="manualIntakeTitle">Ingresar aviso a la central</h2><p>Registro operado: el canal queda trazado y no se presenta como chatbot o integración automática.</p></div>
+      <button id="manualIntakeClose" class="manual-intake-close" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div class="manual-intake-grid">
+      <label>Canal de ingreso<select id="manualIntakeChannel" required><option value="PHONE_14XX">Teléfono municipal 14XX</option><option value="WHATSAPP_OPERATOR">WhatsApp atendido por operador</option><option value="RADIO">Radio operacional</option><option value="WALK_IN">Atención presencial</option><option value="OTHER">Otro ingreso manual</option></select></label>
+      <label>Categoría<select id="manualIntakeCategory" required><option value="SECURITY">Seguridad ciudadana</option><option value="VIF">VIF</option><option value="MEDICAL">Emergencia médica</option><option value="FIRE">Incendio</option><option value="URBAN_RISK">Riesgo urbano</option><option value="OTHER">Otro</option></select></label>
+      <label>Nombre de quien informa<input id="manualCallerName" maxlength="160" autocomplete="off" /></label>
+      <label>Teléfono de contacto<input id="manualCallerPhone" maxlength="40" inputmode="tel" autocomplete="off" /></label>
+      <label class="full">Dirección informada<input id="manualReportedAddress" maxlength="300" autocomplete="off" /></label>
+      <label class="full">Descripción del aviso<textarea id="manualDescription" rows="4" maxlength="3000" required placeholder="Qué ocurre, riesgos observados y antecedentes relevantes"></textarea></label>
+      <div class="manual-intake-coordinates full">
+        <label>Latitud<input id="manualLatitude" type="number" step="any" required /></label>
+        <label>Longitud<input id="manualLongitude" type="number" step="any" required /></label>
+        <button id="manualUseMapCenter" type="button">Usar centro del mapa</button>
+      </div>
+      <label class="full">Referencia externa / folio del canal<input id="manualExternalReference" maxlength="220" autocomplete="off" /></label>
+    </div>
+    <div class="manual-intake-actions"><span id="manualIntakeStatus" class="manual-intake-status"></span><button id="manualIntakeCancel" type="button">Cancelar</button><button id="manualIntakeSubmit" class="manual-intake-submit" type="submit">Crear ticket</button></div>
+  </form>
+</div>
 
 <div id="mapFilterPanel" class="map-filter-panel hidden" role="dialog" aria-label="Filtros de mapa">
   <div class="map-filter-head">
@@ -2251,6 +2295,62 @@ return token ? { "Authorization": `Bearer ${token}` } : {};
 
 function jsonHeaders() {
 return { "Content-Type": "application/json", ...authHeaders() };
+}
+
+async function openManualIntake() {
+  const center = map.getCenter();
+  document.getElementById("manualLatitude").value = Number(center.lat).toFixed(6);
+  document.getElementById("manualLongitude").value = Number(center.lng).toFixed(6);
+  document.getElementById("manualIntakeStatus").textContent = "";
+  document.getElementById("manualIntakeOverlay").classList.remove("hidden");
+  try {
+    const response = await fetch(`${API_BASE}/settings/emergency-categories`, { headers: authHeaders() });
+    const data = await response.json();
+    if (response.ok && Array.isArray(data.categories) && data.categories.length) {
+      document.getElementById("manualIntakeCategory").innerHTML = data.categories.map((item) =>
+        `<option value="${String(item.type).replace(/[^A-Z0-9_]/g, "")}">${String(item.icon || "")} ${String(item.title || item.type).replace(/[<>&"]/g, "")}</option>`
+      ).join("");
+    }
+  } catch (error) {
+    console.warn("Catálogo de categorías no disponible", error);
+  }
+}
+
+function closeManualIntake() {
+  document.getElementById("manualIntakeOverlay").classList.add("hidden");
+}
+
+async function submitManualIntake(event) {
+  event.preventDefault();
+  const submit = document.getElementById("manualIntakeSubmit");
+  const status = document.getElementById("manualIntakeStatus");
+  const category = document.getElementById("manualIntakeCategory");
+  const payload = {
+    intake_channel: document.getElementById("manualIntakeChannel").value,
+    alert_type: category.value,
+    title: category.options[category.selectedIndex]?.textContent?.trim() || "Aviso municipal",
+    caller_name: document.getElementById("manualCallerName").value.trim() || null,
+    caller_phone: document.getElementById("manualCallerPhone").value.trim() || null,
+    reported_address: document.getElementById("manualReportedAddress").value.trim() || null,
+    description: document.getElementById("manualDescription").value.trim(),
+    latitude: Number(document.getElementById("manualLatitude").value),
+    longitude: Number(document.getElementById("manualLongitude").value),
+    external_reference: document.getElementById("manualExternalReference").value.trim() || null,
+    control_center_code: currentControlCenterCode()
+  };
+  try {
+    submit.disabled = true;
+    status.textContent = "Creando ticket y registrando origen…";
+    const response = await fetch(`${TICKET_URL}/manual`, { method:"POST", headers:jsonHeaders(), body:JSON.stringify(payload) });
+    const data = await response.json();
+    if (!response.ok || data.status === "error") throw new Error(data.message || `HTTP ${response.status}`);
+    status.textContent = `Ticket #${String(data.ticket?.id || "").slice(0,8).toUpperCase()} creado`;
+    setTimeout(() => { closeManualIntake(); document.getElementById("manualIntakeForm").reset(); loadMapState(); }, 700);
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
 }
 
 function showLoginOverlay(message = "") {
@@ -2582,7 +2682,12 @@ function applyControlCenterBranding(controlCenter) {
 
   const productLogo = document.getElementById("productLogo");
   const productLogoUrl = safeText(controlCenter.product_logo_url);
-  if (productLogo && productLogoUrl) productLogo.src = productLogoUrl;
+  if (productLogo && productLogoUrl) {
+    // Configuraciones antiguas apuntaban a un recurso retirado del mapa.
+    productLogo.src = /(^|\/)queltu-logo\.png(?:\?|$)/i.test(productLogoUrl)
+      ? "queltu-symbol.png"
+      : productLogoUrl;
+  }
 
   const title = document.getElementById("controlCenterTitle");
   const subtitle = document.getElementById("controlCenterSubtitle");
@@ -4668,6 +4773,16 @@ document.getElementById("panelLoginCode").addEventListener("keydown", event => {
 if (event.key === "Enter") panelLogin();
 });
 document.getElementById("panelLogoutButton").addEventListener("click", logoutPanel);
+document.getElementById("manualIntakeButton").addEventListener("click", openManualIntake);
+document.getElementById("manualIntakeClose").addEventListener("click", closeManualIntake);
+document.getElementById("manualIntakeCancel").addEventListener("click", closeManualIntake);
+document.getElementById("manualUseMapCenter").addEventListener("click", () => {
+  const center = map.getCenter();
+  document.getElementById("manualLatitude").value = Number(center.lat).toFixed(6);
+  document.getElementById("manualLongitude").value = Number(center.lng).toFixed(6);
+});
+document.getElementById("manualIntakeForm").addEventListener("submit", submitManualIntake);
+document.getElementById("manualIntakeOverlay").addEventListener("click", (event) => { if (event.target.id === "manualIntakeOverlay") closeManualIntake(); });
 initMapFilters();
 checkPanelSession();
 </script>
