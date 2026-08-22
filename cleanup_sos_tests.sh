@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API="${API:-https://sos.vsti.cl}"
+API="${API:-https://api.queltu.com}"
 CC="${CC:-CC-VINA}"
 
 if ! command -v jq >/dev/null 2>&1; then
