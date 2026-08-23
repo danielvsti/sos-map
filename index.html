@@ -562,6 +562,36 @@ background: #f97316 !important;
   font-weight: 800;
 }
 
+@keyframes sla-overdue-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(220,38,38,.95), 0 0 18px rgba(220,38,38,.75); }
+  50% { box-shadow: 0 0 0 9px rgba(220,38,38,.20), 0 0 28px rgba(220,38,38,.95); }
+}
+
+.ticket-emergency-marker.ticket-sla-overdue {
+  animation: sla-overdue-pulse 1s infinite !important;
+  outline: 3px solid #fff;
+}
+
+.ticket-sla-badge {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border: 3px solid white;
+  border-radius: 999px;
+  background: #dc2626;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  z-index: 5;
+}
+
 .ticket-call-badge {
   position: absolute;
   top: -12px;
@@ -3002,7 +3032,7 @@ function updateMapFilterSummary(stats) {
   const el = document.getElementById("mapFilterSummary");
   if (!el) return;
   if (!stats) { el.textContent = "Filtros listos."; return; }
-  el.textContent = `Mostrando ${stats.ticketsShown}/${stats.ticketsTotal} tickets · ${stats.resolversShown}/${stats.resolversTotal} resolutores · ${stats.sirensShown}/${stats.sirensTotal} sirenas`;
+  el.textContent = `Mostrando ${stats.ticketsShown}/${stats.ticketsTotal} tickets · 🚨 ${stats.slaOverdue || 0} con SLA vencido · ${stats.resolversShown}/${stats.resolversTotal} resolutores · ${stats.sirensShown}/${stats.sirensTotal} sirenas`;
 }
 function initMapFilters() {
   const button = document.getElementById("mapFilterButton");
@@ -3320,6 +3350,42 @@ function ticketSlaPolicySnapshot(ticket = {}) {
     try { return JSON.parse(raw); } catch (_) { return {}; }
   }
   return {};
+}
+
+function ticketSlaBreaches(ticket = {}, at = Date.now()) {
+  const state = String(ticket.state || "").toUpperCase();
+  if (["CLOSED", "CANCELLED", "RESOLVED"].includes(state)) return [];
+  const policy = ticketSlaPolicySnapshot(ticket);
+  if (policy.enabled === false) return [];
+  const createdAt = new Date(ticket.created_at || 0).getTime();
+  const deadline = (stored, minutes) => {
+    const storedTime = stored ? new Date(stored).getTime() : NaN;
+    if (Number.isFinite(storedTime)) return storedTime;
+    const configuredMinutes = Number(minutes);
+    return Number.isFinite(createdAt) && Number.isFinite(configuredMinutes) && configuredMinutes > 0
+      ? createdAt + configuredMinutes * 60000
+      : null;
+  };
+  const breaches = [];
+  const acknowledgementDueAt = deadline(ticket.acknowledged_due_at, policy.acknowledgement_minutes);
+  if (policy.require_central_acknowledgement === true && !ticket.acknowledged_at && acknowledgementDueAt && acknowledgementDueAt < at) {
+    breaches.push({ stage: "CENTRAL", label: "Confirmación Central vencida", dueAt: acknowledgementDueAt });
+  }
+  const assignmentDueAt = deadline(ticket.assigned_due_at, policy.assignment_minutes);
+  if (!ticket.assigned_resolver_id && assignmentDueAt && assignmentDueAt < at) {
+    breaches.push({ stage: "ASSIGNMENT", label: "Asignación vencida", dueAt: assignmentDueAt });
+  }
+  const assignmentState = String(ticket.latest_assignment_state || ticket.assignment_state || "").toUpperCase();
+  const acceptanceDueAt = ticket.latest_assignment_accept_due_at || ticket.assignment_accept_due_at;
+  const acceptanceDueTime = acceptanceDueAt ? new Date(acceptanceDueAt).getTime() : null;
+  if (assignmentState === "PENDING" && Number.isFinite(acceptanceDueTime) && acceptanceDueTime < at) {
+    breaches.push({ stage: "ACCEPTANCE", label: "Aceptación móvil vencida", dueAt: acceptanceDueTime });
+  }
+  const resolutionDueAt = deadline(ticket.resolved_due_at, policy.resolution_minutes);
+  if (!ticket.resolved_at && resolutionDueAt && resolutionDueAt < at) {
+    breaches.push({ stage: "RESOLUTION", label: "Resolución vencida", dueAt: resolutionDueAt });
+  }
+  return breaches;
 }
 
 function platformTerm(key, fallback) {
@@ -3800,13 +3866,16 @@ function getTicketIcon(ticket) {
   const visual = emergencyVisual(ticket);
   const blinkClass = ticketRequiresBlink(ticket) ? "ticket-emergency-unaccepted" : "ticket-emergency-accepted";
   const assignmentClass = ticket?.assigned_resolver_id ? "ticket-emergency-assigned" : "";
+  const slaBreaches = ticketSlaBreaches(ticket);
+  const slaClass = slaBreaches.length ? "ticket-sla-overdue" : "";
+  const slaBadge = slaBreaches.length ? `<span class="ticket-sla-badge" title="${slaBreaches.map(item => item.label).join(" · ")}">!${slaBreaches.length > 1 ? slaBreaches.length : ""}</span>` : "";
   const callBadge = activeVoiceSessionForTicket(ticket) ? `<span class="ticket-call-badge" title="Llamada segura activa o pendiente">📞</span>` : "";
   const reportCount = Number(ticket?.report_count || 0);
   const reportBadge = reportCount > 1 ? `<span class="ticket-report-badge" title="${reportCount} reportes ciudadanos">👥${reportCount}</span>` : "";
 
   return L.divIcon({
     className: "",
-    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass}" title="${visual.label}">${visual.icon}${callBadge}${reportBadge}<small>${visual.label}</small></div>`,
+    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass} ${slaClass}" title="${visual.label}">${visual.icon}${slaBadge}${callBadge}${reportBadge}<small>${visual.label}</small></div>`,
     iconSize: [58, 58],
     iconAnchor: [29, 29]
   });
@@ -4043,7 +4112,9 @@ function renderTicket(ticket) {
 
   const visual = emergencyVisual(ticket);
   const reportTooltip = Number(ticket.report_count || 0) > 1 ? ` · 👥 ${ticket.report_count} reportes` : "";
-  const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}${reportTooltip}`;
+  const slaBreaches = ticketSlaBreaches(ticket);
+  const slaTooltip = slaBreaches.length ? ` · 🚨 ${slaBreaches.map(item => item.label).join(" / ")}` : "";
+  const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}${reportTooltip}${slaTooltip}`;
 
   if (!mobileMarkers[ticket.id]) {
 
@@ -5585,6 +5656,23 @@ const centralAckHtml = centralAckConfirmed
         <strong>⚙️ Recepción automática</strong><br>
         <span>Este ticket no exige confirmación humana de Central.</span>
       </div>`;
+const acceptanceState = String(ticket.latest_assignment_state || "").toUpperCase();
+const acceptanceDueAt = ticket.latest_assignment_accept_due_at
+  ? new Date(ticket.latest_assignment_accept_due_at).getTime()
+  : null;
+const acceptanceExpired = acceptanceState === "EXPIRED"
+  || (acceptanceState === "PENDING" && Number.isFinite(acceptanceDueAt) && acceptanceDueAt < now);
+const resolverAcceptanceHtml = acceptanceExpired
+  ? `<div style="margin-top:14px;padding:12px;border-radius:12px;background:#fef2f2;border:2px solid #ef4444;color:#991b1b;line-height:1.35;">
+      <strong>🚨 Aceptación móvil vencida</strong><br>
+      <span>${Number.isFinite(acceptanceDueAt) ? `Venció hace ${formatDuration(now - acceptanceDueAt)}.` : "El resolutor no aceptó dentro del plazo."} ${ticket.assigned_resolver_id ? "La asignación requiere reconciliación." : "El caso quedó disponible para reasignación."}</span>
+    </div>`
+  : acceptanceState === "PENDING" && Number.isFinite(acceptanceDueAt)
+    ? `<div style="margin-top:14px;padding:12px;border-radius:12px;background:#fffbeb;border:1px solid #fbbf24;color:#92400e;line-height:1.35;">
+        <strong>📱 Aceptación móvil pendiente</strong><br>
+        <span>Vence en ${formatDuration(acceptanceDueAt - now)}.</span>
+      </div>`
+    : "";
 const hasBlockingResolver = ticket.assigned_resolver_id && ticket.resolver_name && !assignmentWasRejected;
 const needsAssignment = (!hasBlockingResolver || assignmentWasRejected) && !terminalTicket;
 const canManualReassign = !!hasBlockingResolver && !terminalTicket;
@@ -5788,6 +5876,7 @@ ${formatDuration(assignmentTime)}
 ${formatDuration(resolutionTime)}
 
 ${centralAckHtml}
+${resolverAcceptanceHtml}
 
 </div>
 
@@ -5925,6 +6014,7 @@ const visibleOrphanMobileEvents = [];
 lastMapFilterStats = {
   ticketsShown: visibleTickets.length,
   ticketsTotal: allOpenTickets.length,
+  slaOverdue: allOpenTickets.filter(ticket => ticketSlaBreaches(ticket).length > 0).length,
   resolversShown: visibleResolvers.length,
   resolversTotal: resolvers.length,
   sirensShown: visibleSirens.length,
