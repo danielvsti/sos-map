@@ -3014,7 +3014,7 @@ function ticketPassesMapFilters(ticket) {
 function resolverFilterBucket(resolver) {
   const state = resolverDisplayState(resolver);
   if (state === "AVAILABLE") return "available";
-  if (["BUSY", "EN_ROUTE", "ON_SITE", "BLOCKED_NO_TICKET"].includes(state)) return "busy";
+  if (["BUSY", "PAUSED", "EN_ROUTE", "ON_SITE", "BLOCKED_NO_TICKET"].includes(state)) return "busy";
   if (state === "STALE_GPS") return "stale";
   return "offline";
 }
@@ -3899,6 +3899,7 @@ function resolverStateLabel(state) {
   const labels = {
     AVAILABLE: "Disponible",
     BUSY: "Ocupado",
+    PAUSED: "En pausa",
     EN_ROUTE: "En camino",
     ON_SITE: "En sitio",
     OFFLINE: "Fuera de línea",
@@ -3916,7 +3917,7 @@ function getResolverIcon(resolver) {
   let cssClass = "resolver-marker-offline";
 
   if (state === "AVAILABLE") cssClass = "resolver-marker-available";
-  if (state === "BUSY" || state === "BLOCKED_NO_TICKET") cssClass = "resolver-marker-busy";
+  if (state === "BUSY" || state === "PAUSED" || state === "BLOCKED_NO_TICKET") cssClass = "resolver-marker-busy";
   if (state === "EN_ROUTE") cssClass = "resolver-marker-enroute";
   if (state === "ON_SITE") cssClass = "resolver-marker-onsite";
   if (state === "STALE_GPS") cssClass = "resolver-marker-stale";
