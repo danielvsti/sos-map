@@ -2837,6 +2837,15 @@ function platformPolicyValue(section, key, fallback = null) {
   return value == null ? fallback : value;
 }
 
+function ticketSlaPolicySnapshot(ticket = {}) {
+  const raw = ticket?.sla_policy_snapshot;
+  if (raw && typeof raw === "object") return raw;
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw); } catch (_) { return {}; }
+  }
+  return {};
+}
+
 function platformTerm(key, fallback) {
   const terminology = currentPlatformSettings?.terminology || {};
   const snakeKey = String(key || "").replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -3037,6 +3046,23 @@ await loadMapState();
 } else {
 alert("No fue posible reconocer el SOS móvil");
 }
+}
+
+async function confirmTicketFromCentral(ticketId) {
+  try {
+    const res = await fetch(`${TICKET_URL}/${ticketId}/acknowledge`, {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok || data.status !== "ok") throw new Error(data.message || "No fue posible confirmar el ticket");
+    await loadMapState();
+    await openTicketPanel(ticketId);
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "No fue posible confirmar el ticket desde Central");
+  }
 }
 
 function getTicketClass(ticket) {
@@ -4355,6 +4381,24 @@ const latestAssignmentState = String(ticket.latest_assignment_state || "").toUpp
 const ticketState = String(ticket.state || "").toUpperCase();
 const assignmentWasRejected = latestAssignmentState === "REJECTED";
 const terminalTicket = ["CLOSED", "CANCELLED", "RESOLVED"].includes(ticketState);
+const ticketSlaPolicy = ticketSlaPolicySnapshot(ticket);
+const centralAckRequired = ticketSlaPolicy.require_central_acknowledgement === true;
+const centralAckConfirmed = Boolean(ticket.acknowledged_at);
+const centralAckHtml = centralAckConfirmed
+  ? `<div style="margin-top:14px;padding:12px;border-radius:12px;background:#ecfdf5;border:1px solid #86efac;color:#166534;line-height:1.35;">
+      <strong>✅ Central confirmó la revisión</strong><br>
+      <small>${new Date(ticket.acknowledged_at).toLocaleString()}</small>
+    </div>`
+  : centralAckRequired && !terminalTicket
+    ? `<div style="margin-top:14px;padding:12px;border-radius:12px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;line-height:1.35;">
+        <strong>👁️ Confirmación de Central pendiente</strong><br>
+        <span>Un operador debe revisar este caso dentro del SLA configurado.</span><br>
+        <button class="btn-secondary" style="margin-top:10px;" onclick="confirmTicketFromCentral('${ticket.id}')">Tomar conocimiento</button>
+      </div>`
+    : `<div style="margin-top:14px;padding:12px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;line-height:1.35;">
+        <strong>⚙️ Recepción automática</strong><br>
+        <span>Este ticket no exige confirmación humana de Central.</span>
+      </div>`;
 const hasBlockingResolver = ticket.assigned_resolver_id && ticket.resolver_name && !assignmentWasRejected;
 const needsAssignment = (!hasBlockingResolver || assignmentWasRejected) && !terminalTicket;
 const canManualReassign = !!hasBlockingResolver && !terminalTicket;
@@ -4521,6 +4565,8 @@ ${formatDuration(assignmentTime)}
 
 ✅ Resolución:
 ${formatDuration(resolutionTime)}
+
+${centralAckHtml}
 
 </div>
 
