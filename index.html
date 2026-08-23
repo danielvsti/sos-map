@@ -3380,7 +3380,7 @@ function ticketSlaPolicySnapshot(ticket = {}) {
 }
 
 function ticketAbuseRiskSnapshot(ticket = {}) {
-  const raw = ticket?.abuse_risk_snapshot;
+  const raw = ticket?.alert_credibility_snapshot || ticket?.abuse_risk_snapshot;
   if (raw && typeof raw === "object") return raw;
   if (typeof raw === "string") {
     try { return JSON.parse(raw); } catch (_) { return null; }
@@ -3906,8 +3906,10 @@ function getTicketIcon(ticket) {
   const slaClass = slaBreaches.length ? "ticket-sla-overdue" : "";
   const slaBadge = slaBreaches.length ? `<span class="ticket-sla-badge" title="${slaBreaches.map(item => item.label).join(" · ")}">!${slaBreaches.length > 1 ? slaBreaches.length : ""}</span>` : "";
   const abuseRisk = ticketAbuseRiskSnapshot(ticket);
-  const abuseBadge = abuseRisk?.requires_human_validation
-    ? `<span class="ticket-abuse-badge ${abuseRisk.level === "HIGH" ? "high" : ""}" title="Validación preventiva sugerida; no confirma abuso">🔎</span>`
+  const alertTrustScore = Number(abuseRisk?.alert_confidence?.score ?? abuseRisk?.score);
+  const credibilityReviewPending = abuseRisk?.requires_human_validation === true && !ticket?.alert_credibility_reviewed_at;
+  const abuseBadge = credibilityReviewPending
+    ? `<span class="ticket-abuse-badge ${Number.isFinite(alertTrustScore) && alertTrustScore < 40 ? "high" : ""}" title="Ranking bajo; requiere revisión del operador">🔎</span>`
     : "";
   const callBadge = activeVoiceSessionForTicket(ticket) ? `<span class="ticket-call-badge" title="Llamada segura activa o pendiente">📞</span>` : "";
   const reportCount = Number(ticket?.report_count || 0);
@@ -4156,7 +4158,9 @@ function renderTicket(ticket) {
   const slaBreaches = ticketSlaBreaches(ticket);
   const slaTooltip = slaBreaches.length ? ` · 🚨 ${slaBreaches.map(item => item.label).join(" / ")}` : "";
   const abuseRisk = ticketAbuseRiskSnapshot(ticket);
-  const abuseTooltip = abuseRisk?.requires_human_validation ? " · 🔎 Validación preventiva sugerida" : "";
+  const abuseTooltip = abuseRisk?.requires_human_validation === true && !ticket?.alert_credibility_reviewed_at
+    ? " · 🔎 Ranking de alerta requiere revisión"
+    : "";
   const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}${reportTooltip}${slaTooltip}${abuseTooltip}`;
 
   if (!mobileMarkers[ticket.id]) {
@@ -5601,23 +5605,85 @@ const reportsSummaryHtml = reportCount > 1
   : `<div class="ticket-report-summary">👥 1 reporte de ${escapeHtml(endUserLower)} asociado a este ticket.</div>`;
 const ticketMeta = getTicketCreatedMetadata(data.actions);
 const abuseRiskAction = [...(data.actions || [])].reverse().find(action =>
-  ["ABUSE_RISK_FLAGGED", "REPORTER_ABUSE_RISK_FLAGGED"].includes(String(action.action_type || "").toUpperCase())
+  [
+    "ALERT_CREDIBILITY_REVIEW_REQUIRED",
+    "ALERT_CREDIBILITY_AUTO_CONTINUED",
+    "ABUSE_RISK_FLAGGED",
+    "REPORTER_ABUSE_RISK_FLAGGED"
+  ].includes(String(action.action_type || "").toUpperCase())
 );
 let actionAbuseRisk = abuseRiskAction?.metadata || null;
 if (typeof actionAbuseRisk === "string") {
   try { actionAbuseRisk = JSON.parse(actionAbuseRisk); } catch (_) { actionAbuseRisk = null; }
 }
 const abuseRisk = ticketAbuseRiskSnapshot(ticket) || actionAbuseRisk;
-const abuseSignals = Array.isArray(abuseRisk?.signals) ? abuseRisk.signals : [];
-const abuseRiskHtml = abuseRisk?.requires_human_validation
-  ? `<div class="ticket-content-section" style="background:${abuseRisk.level === "HIGH" ? "#fef2f2" : "#fffbeb"};border:2px solid ${abuseRisk.level === "HIGH" ? "#ef4444" : "#f59e0b"};color:${abuseRisk.level === "HIGH" ? "#991b1b" : "#92400e"};line-height:1.4;">
-      <strong>🔎 ${abuseRisk.level === "HIGH" ? "Validación prioritaria sugerida" : "Validación preventiva sugerida"}</strong><br>
-      <span>Se detectaron señales históricas que ameritan corroboración antes del despacho.</span>
-      ${abuseSignals.length ? `<ul style="margin:8px 0 8px 20px;padding:0;">${abuseSignals.map(signal => `<li>${escapeHtml(signal.label || signal.code || "Señal de reincidencia")}</li>`).join("")}</ul>` : ""}
-      <strong>Acción sugerida:</strong> revisar antecedentes, contactar al vecino o tomar conocimiento desde Central.<br>
-      <small>Esta clasificación es explicable, no confirma una pitanza y nunca bloquea automáticamente la emergencia.</small>
+const credibilityReviewCompletedAction = [...(data.actions || [])].reverse().find(action =>
+  String(action.action_type || "").toUpperCase() === "ALERT_CREDIBILITY_REVIEW_COMPLETED"
+);
+const isOperationalCredibility = !!(
+  abuseRisk?.citizen_credibility
+  && abuseRisk?.event_credibility
+  && abuseRisk?.alert_confidence
+);
+const citizenCredibility = abuseRisk?.citizen_credibility || {};
+const eventCredibility = abuseRisk?.event_credibility || {};
+const alertConfidence = abuseRisk?.alert_confidence || {};
+const citizenSignals = Array.isArray(citizenCredibility.signals) ? citizenCredibility.signals : [];
+const eventSignals = Array.isArray(eventCredibility.signals) ? eventCredibility.signals : [];
+const legacyAbuseSignals = Array.isArray(abuseRisk?.signals) ? abuseRisk.signals : [];
+const credibilityDecision = String(abuseRisk?.decision || "").toUpperCase();
+const credibilityWasReviewed = !!(ticket?.alert_credibility_reviewed_at || credibilityReviewCompletedAction);
+const credibilityNeedsReview = abuseRisk?.requires_human_validation === true && !credibilityWasReviewed;
+const credibilityIsCritical = abuseRisk?.critical_priority_exception === true;
+const credibilityCardStyle = credibilityNeedsReview
+  ? (credibilityIsCritical
+    ? { background: "#fff7ed", border: "#f97316", color: "#9a3412" }
+    : { background: "#fffbeb", border: "#f59e0b", color: "#92400e" })
+  : { background: "#ecfdf5", border: "#22c55e", color: "#166534" };
+const credibilityDecisionLabel = credibilityWasReviewed
+  ? "Central revisó y autorizó la asignación"
+  : credibilityDecision === "AUTOMATIC_FLOW_CONTINUES"
+  ? "Flujo automático habilitado"
+  : credibilityDecision === "CRITICAL_CONTINUE_WITH_PRIORITY_REVIEW"
+    ? "Categoría crítica: despacho continúa con revisión prioritaria"
+    : "Intervención de Central requerida antes de asignar";
+const scoreCell = (label, value, threshold, pass) => `
+  <div style="background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:10px;min-width:135px;flex:1;color:#111827;">
+    <small style="display:block;color:#6b7280;font-weight:700;">${escapeHtml(label)}</small>
+    <strong style="font-size:20px;color:${pass === false ? "#dc2626" : "#16a34a"};">${Number.isFinite(Number(value)) ? Math.round(Number(value)) : "-"}%</strong>
+    <small style="display:block;">Umbral ${Number.isFinite(Number(threshold)) ? Math.round(Number(threshold)) : "-"}%</small>
+  </div>`;
+const credibilitySignalsHtml = [...citizenSignals, ...eventSignals]
+  .filter(signal => Number(signal?.effect || 0) !== 0)
+  .map(signal => `<li>${escapeHtml(signal.label || signal.code || "Señal operacional")} (${Number(signal.effect) > 0 ? "+" : ""}${Number(signal.effect)})</li>`)
+  .join("");
+const abuseRiskHtml = isOperationalCredibility
+  ? `<div class="ticket-content-section" style="background:${credibilityCardStyle.background};border:2px solid ${credibilityCardStyle.border};color:${credibilityCardStyle.color};line-height:1.4;">
+      <strong>🛡️ Confianza operacional de la alerta</strong><br>
+      <span>${escapeHtml(credibilityDecisionLabel)}</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+        ${scoreCell("Credibilidad Vecino", citizenCredibility.score, citizenCredibility.threshold, citizenCredibility.pass)}
+        ${scoreCell("Credibilidad Evento", eventCredibility.score, eventCredibility.threshold, eventCredibility.pass)}
+        ${scoreCell("F(Alerta)", alertConfidence.score, alertConfidence.threshold, alertConfidence.pass)}
+      </div>
+      <small><strong>F(Alerta)</strong> = Ranking Vecino × Ranking Evento.</small>
+      ${credibilitySignalsHtml ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;">Ver factores explicables</summary><ul style="margin:8px 0 8px 20px;padding:0;">${credibilitySignalsHtml}</ul></details>` : ""}
+      <div style="margin-top:10px;"><strong>Acción:</strong> ${credibilityWasReviewed
+        ? "revisión humana registrada; el caso puede continuar con su asignación y SLA."
+        : credibilityNeedsReview
+        ? (credibilityIsCritical
+          ? "priorizar la revisión sin detener el despacho de la emergencia crítica."
+          : "corroborar antecedentes y asignar desde Central si corresponde.")
+        : "continuar el flujo configurado por el Centro de Control."}</div>
+      <small>Es una evaluación por alerta, explicable y auditable. No confirma una pitanza ni descarta automáticamente una emergencia.</small>
     </div>`
-  : "";
+  : abuseRisk?.requires_human_validation
+    ? `<div class="ticket-content-section" style="background:${abuseRisk.level === "HIGH" ? "#fef2f2" : "#fffbeb"};border:2px solid ${abuseRisk.level === "HIGH" ? "#ef4444" : "#f59e0b"};color:${abuseRisk.level === "HIGH" ? "#991b1b" : "#92400e"};line-height:1.4;">
+        <strong>🔎 Validación preventiva sugerida</strong><br>
+        ${legacyAbuseSignals.length ? `<ul style="margin:8px 0 8px 20px;padding:0;">${legacyAbuseSignals.map(signal => `<li>${escapeHtml(signal.label || signal.code || "Señal de reincidencia")}</li>`).join("")}</ul>` : ""}
+        <small>Evaluación histórica compatible; no confirma una pitanza ni cancela la emergencia.</small>
+      </div>`
+    : "";
 const isPhysicalDevice = isPhysicalSosTicket(ticket);
 const isPhoneCall = String(ticket.source_type || "").toUpperCase() === "PHONE_CALL";
 const manualIntake = ticket.manual_intake || ticketMeta || {};
