@@ -5544,9 +5544,15 @@ const terminalTicket = ["CLOSED", "CANCELLED", "RESOLVED"].includes(ticketState)
 const ticketSlaPolicy = ticketSlaPolicySnapshot(ticket);
 const centralAckRequired = ticketSlaPolicy.require_central_acknowledgement === true;
 const centralAckConfirmed = Boolean(ticket.acknowledged_at);
-const centralAckDueAt = ticket.acknowledged_due_at
+const storedCentralAckDueAt = ticket.acknowledged_due_at
   ? new Date(ticket.acknowledged_due_at).getTime()
   : null;
+const centralAckMinutes = Number(ticketSlaPolicy.acknowledgement_minutes);
+const centralAckDueAt = Number.isFinite(storedCentralAckDueAt)
+  ? storedCentralAckDueAt
+  : Number.isFinite(createdAt) && Number.isFinite(centralAckMinutes) && centralAckMinutes > 0
+    ? createdAt + centralAckMinutes * 60000
+    : null;
 const centralAckConfirmedAt = ticket.acknowledged_at
   ? new Date(ticket.acknowledged_at).getTime()
   : null;
