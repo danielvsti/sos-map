@@ -592,6 +592,33 @@ background: #f97316 !important;
   z-index: 5;
 }
 
+.ticket-abuse-badge {
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 5px;
+  border: 3px solid white;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #451a03;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  z-index: 6;
+  box-shadow: 0 0 0 4px rgba(245,158,11,.22);
+}
+
+.ticket-abuse-badge.high {
+  background: #dc2626;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(220,38,38,.22);
+}
+
 .ticket-call-badge {
   position: absolute;
   top: -12px;
@@ -3352,6 +3379,15 @@ function ticketSlaPolicySnapshot(ticket = {}) {
   return {};
 }
 
+function ticketAbuseRiskSnapshot(ticket = {}) {
+  const raw = ticket?.abuse_risk_snapshot;
+  if (raw && typeof raw === "object") return raw;
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw); } catch (_) { return null; }
+  }
+  return null;
+}
+
 function ticketSlaBreaches(ticket = {}, at = Date.now()) {
   const state = String(ticket.state || "").toUpperCase();
   if (["CLOSED", "CANCELLED", "RESOLVED"].includes(state)) return [];
@@ -3869,13 +3905,17 @@ function getTicketIcon(ticket) {
   const slaBreaches = ticketSlaBreaches(ticket);
   const slaClass = slaBreaches.length ? "ticket-sla-overdue" : "";
   const slaBadge = slaBreaches.length ? `<span class="ticket-sla-badge" title="${slaBreaches.map(item => item.label).join(" · ")}">!${slaBreaches.length > 1 ? slaBreaches.length : ""}</span>` : "";
+  const abuseRisk = ticketAbuseRiskSnapshot(ticket);
+  const abuseBadge = abuseRisk?.requires_human_validation
+    ? `<span class="ticket-abuse-badge ${abuseRisk.level === "HIGH" ? "high" : ""}" title="Validación preventiva sugerida; no confirma abuso">🔎</span>`
+    : "";
   const callBadge = activeVoiceSessionForTicket(ticket) ? `<span class="ticket-call-badge" title="Llamada segura activa o pendiente">📞</span>` : "";
   const reportCount = Number(ticket?.report_count || 0);
   const reportBadge = reportCount > 1 ? `<span class="ticket-report-badge" title="${reportCount} reportes ciudadanos">👥${reportCount}</span>` : "";
 
   return L.divIcon({
     className: "",
-    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass} ${slaClass}" title="${visual.label}">${visual.icon}${slaBadge}${callBadge}${reportBadge}<small>${visual.label}</small></div>`,
+    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass} ${slaClass}" title="${visual.label}">${visual.icon}${slaBadge}${abuseBadge}${callBadge}${reportBadge}<small>${visual.label}</small></div>`,
     iconSize: [58, 58],
     iconAnchor: [29, 29]
   });
@@ -4115,7 +4155,9 @@ function renderTicket(ticket) {
   const reportTooltip = Number(ticket.report_count || 0) > 1 ? ` · 👥 ${ticket.report_count} reportes` : "";
   const slaBreaches = ticketSlaBreaches(ticket);
   const slaTooltip = slaBreaches.length ? ` · 🚨 ${slaBreaches.map(item => item.label).join(" / ")}` : "";
-  const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}${reportTooltip}${slaTooltip}`;
+  const abuseRisk = ticketAbuseRiskSnapshot(ticket);
+  const abuseTooltip = abuseRisk?.requires_human_validation ? " · 🔎 Validación preventiva sugerida" : "";
+  const tooltip = `${visual.label} · ${ticketIncidentSector(ticket)} · ${ticket.state || "TICKET"} · ${ticket.title || "Alerta"}${reportTooltip}${slaTooltip}${abuseTooltip}`;
 
   if (!mobileMarkers[ticket.id]) {
 
@@ -5558,6 +5600,24 @@ const reportsSummaryHtml = reportCount > 1
   ? `<div class="ticket-report-summary">👥 ${reportCount} ${escapeHtml(endUsersTerm.toLowerCase())} han reportado este mismo incidente. El centro opera un solo ticket y usa los reportes como testimonios/antecedentes asociados.</div>`
   : `<div class="ticket-report-summary">👥 1 reporte de ${escapeHtml(endUserLower)} asociado a este ticket.</div>`;
 const ticketMeta = getTicketCreatedMetadata(data.actions);
+const abuseRiskAction = [...(data.actions || [])].reverse().find(action =>
+  ["ABUSE_RISK_FLAGGED", "REPORTER_ABUSE_RISK_FLAGGED"].includes(String(action.action_type || "").toUpperCase())
+);
+let actionAbuseRisk = abuseRiskAction?.metadata || null;
+if (typeof actionAbuseRisk === "string") {
+  try { actionAbuseRisk = JSON.parse(actionAbuseRisk); } catch (_) { actionAbuseRisk = null; }
+}
+const abuseRisk = ticketAbuseRiskSnapshot(ticket) || actionAbuseRisk;
+const abuseSignals = Array.isArray(abuseRisk?.signals) ? abuseRisk.signals : [];
+const abuseRiskHtml = abuseRisk?.requires_human_validation
+  ? `<div class="ticket-content-section" style="background:${abuseRisk.level === "HIGH" ? "#fef2f2" : "#fffbeb"};border:2px solid ${abuseRisk.level === "HIGH" ? "#ef4444" : "#f59e0b"};color:${abuseRisk.level === "HIGH" ? "#991b1b" : "#92400e"};line-height:1.4;">
+      <strong>🔎 ${abuseRisk.level === "HIGH" ? "Validación prioritaria sugerida" : "Validación preventiva sugerida"}</strong><br>
+      <span>Se detectaron señales históricas que ameritan corroboración antes del despacho.</span>
+      ${abuseSignals.length ? `<ul style="margin:8px 0 8px 20px;padding:0;">${abuseSignals.map(signal => `<li>${escapeHtml(signal.label || signal.code || "Señal de reincidencia")}</li>`).join("")}</ul>` : ""}
+      <strong>Acción sugerida:</strong> revisar antecedentes, contactar al vecino o tomar conocimiento desde Central.<br>
+      <small>Esta clasificación es explicable, no confirma una pitanza y nunca bloquea automáticamente la emergencia.</small>
+    </div>`
+  : "";
 const isPhysicalDevice = isPhysicalSosTicket(ticket);
 const isPhoneCall = String(ticket.source_type || "").toUpperCase() === "PHONE_CALL";
 const manualIntake = ticket.manual_intake || ticketMeta || {};
@@ -5857,6 +5917,8 @@ document.getElementById(
     </button>
   </div>
 </div>
+
+${abuseRiskHtml}
 
 <div class="ticket-content-section">
 
