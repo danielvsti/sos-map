@@ -3333,6 +3333,23 @@ let currentTickets = [];
 let currentPlatformSettings = null;
 let knownOperatorVoiceSessionIds = new Set(JSON.parse(localStorage.getItem("operator_known_voice_session_ids") || "[]"));
 
+function captureTicketDisclosureState(panel, ticketId) {
+  if (!panel || String(selectedTicket?.id || "") !== String(ticketId || "")) return new Set();
+  return new Set(
+    Array.from(panel.querySelectorAll("details[data-ticket-disclosure]"))
+      .filter((details) => details.open)
+      .map((details) => details.dataset.ticketDisclosure)
+      .filter(Boolean)
+  );
+}
+
+function restoreTicketDisclosureState(panel, openDisclosures) {
+  if (!panel || !(openDisclosures instanceof Set) || openDisclosures.size === 0) return;
+  panel.querySelectorAll("details[data-ticket-disclosure]").forEach((details) => {
+    details.open = openDisclosures.has(details.dataset.ticketDisclosure);
+  });
+}
+
 function createOperatorVoiceState() {
   return {
     session: null,
@@ -5527,6 +5544,7 @@ async function openTicketPanel(ticketId, options = {}) {
 const { silent = false, preserveScroll = false } = options;
 const panelEl = document.getElementById("ticketPanel");
 const previousScrollTop = preserveScroll && panelEl ? panelEl.scrollTop : null;
+const openDisclosures = captureTicketDisclosureState(panelEl, ticketId);
 
 try {
 
@@ -5667,7 +5685,7 @@ const abuseRiskHtml = isOperationalCredibility
         ${scoreCell("F(Alerta)", alertConfidence.score, alertConfidence.threshold, alertConfidence.pass)}
       </div>
       <small><strong>F(Alerta)</strong> = Ranking Vecino × Ranking Evento.</small>
-      ${credibilitySignalsHtml ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;">Ver factores explicables</summary><ul style="margin:8px 0 8px 20px;padding:0;">${credibilitySignalsHtml}</ul></details>` : ""}
+      ${credibilitySignalsHtml ? `<details data-ticket-disclosure="credibility-factors" style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;">Ver factores explicables</summary><ul style="margin:8px 0 8px 20px;padding:0;">${credibilitySignalsHtml}</ul></details>` : ""}
       <div style="margin-top:10px;"><strong>Acción:</strong> ${credibilityWasReviewed
         ? "revisión humana registrada; el caso puede continuar con su asignación y SLA."
         : credibilityNeedsReview
@@ -6055,6 +6073,7 @@ ${resolverActionsHtml}
 	`;
 
 restoreCommunicationPlaybackState(communicationPlaybackState);
+restoreTicketDisclosureState(panelEl, openDisclosures);
 
 document
 		.getElementById("ticketPanel")
