@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="app-version" content="v10-responsive-operator-header" />
+<meta name="app-version" content="v11-resolver-inspection-shape" />
 <title>QUELTU · Centro de Control</title>
 <link rel="icon" href="queltu-symbol.png" type="image/png" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -544,6 +544,11 @@ background: #f97316 !important;
   font-size: 25px;
   box-shadow: 0 0 12px rgba(0,0,0,.35);
   position: relative;
+}
+
+/* La forma comunica el origen; el color y el ícono continúan comunicando la categoría. */
+.ticket-emergency-marker.ticket-resolver-inspection {
+  border-radius: 13px;
 }
 
 .ticket-emergency-marker small {
@@ -3934,6 +3939,8 @@ function getTicketIcon(ticket) {
   }
 
   const visual = emergencyVisual(ticket);
+  const isResolverInspection = String(ticket?.source_type || "").toUpperCase() === "RESOLVER_INSPECTION";
+  const originClass = isResolverInspection ? "ticket-resolver-inspection" : "";
   const blinkClass = ticketRequiresBlink(ticket) ? "ticket-emergency-unaccepted" : "ticket-emergency-accepted";
   const assignmentClass = ticket?.assigned_resolver_id ? "ticket-emergency-assigned" : "";
   const slaBreaches = ticketSlaBreaches(ticket);
@@ -3948,13 +3955,13 @@ function getTicketIcon(ticket) {
   const callBadge = activeVoiceSessionForTicket(ticket) ? `<span class="ticket-call-badge" title="Llamada segura activa o pendiente">📞</span>` : "";
   const reportCount = Number(ticket?.report_count || 0);
   const reportBadge = reportCount > 1 ? `<span class="ticket-report-badge" title="${reportCount} reportes ciudadanos">👥${reportCount}</span>` : "";
-  const inspectionBadge = String(ticket?.source_type || "").toUpperCase() === "RESOLVER_INSPECTION"
+  const inspectionBadge = isResolverInspection
     ? '<span class="ticket-inspection-badge" title="Hallazgo originado en inspección de terreno">🔎</span>'
     : "";
 
   return L.divIcon({
     className: "",
-    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass} ${slaClass}" title="${visual.label}">${visual.icon}${slaBadge}${abuseBadge}${callBadge}${inspectionBadge}${reportBadge}<small>${visual.label}</small></div>`,
+    html: `<div class="ticket-emergency-marker ${visual.css} ${blinkClass} ${assignmentClass} ${slaClass} ${originClass}" title="${isResolverInspection ? "Inspección del resolutor · " : ""}${visual.label}">${visual.icon}${slaBadge}${abuseBadge}${callBadge}${inspectionBadge}${reportBadge}<small>${visual.label}</small></div>`,
     iconSize: [58, 58],
     iconAnchor: [29, 29]
   });
