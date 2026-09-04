@@ -648,6 +648,7 @@ background: #f97316 !important;
 .ticket-emergency-vif { background: #be185d; }
 .ticket-emergency-fall { background: #0891b2; }
 .ticket-emergency-risk { background: #eab308; color: #111827; }
+.ticket-emergency-traffic { background: #f97316; }
 .ticket-emergency-other { background: #64748b; }
 .ticket-emergency-assigned { box-shadow: 0 0 12px rgba(37,99,235,.45); }
 .ticket-emergency-unaccepted { animation: pulse-fast 1s infinite; }
@@ -3202,7 +3203,8 @@ function emergencyVisual(ticket) {
   if (type === "SECURITY" || type === "SEGURIDAD") return { icon: "🛡️", label: "SEG", css: "ticket-emergency-security" };
   if (type === "VIF" || type.includes("VIOLENCIA")) return { icon: "🤫", label: "VIF", css: "ticket-emergency-vif" };
   if (type === "FALL_DETECTED" || type === "FALL" || type === "CAIDA" || type === "CAÍDA") return { icon: "⚕️", label: "CAÍDA", css: "ticket-emergency-fall" };
-  if (type === "RISK" || type === "RIESGO") return { icon: "⚠️", label: "RIESGO", css: "ticket-emergency-risk" };
+  if (type === "TRAFFIC_ACCIDENT" || type === "ACCIDENT" || type === "ACCIDENTE") return { icon: "🚗", label: "ACC", css: "ticket-emergency-traffic" };
+  if (type === "URBAN_RISK" || type === "RISK" || type === "RIESGO") return { icon: "⚠️", label: "RIESGO", css: "ticket-emergency-risk" };
   if (type === "OTHER" || type === "OTRO") return { icon: "❓", label: "OTRO", css: "ticket-emergency-other" };
   return { icon: "🆘", label: "SOS", css: "ticket-emergency-sos" };
 }
